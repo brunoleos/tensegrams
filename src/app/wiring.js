@@ -6,6 +6,7 @@
 import { listLayoutAdapters } from '../layout/registry.js';
 import { listRouters } from '../routing/registry.js';
 import { exportDebugPack } from './debug-export.js';
+import { exportDSL, exportConfig, applyImport } from './dsl-io.js';
 
 export function createWiring(deps) {
   const {
@@ -92,6 +93,35 @@ export function createWiring(deps) {
         dom.debugExportBtn.disabled = true;
         try { await exportDebugPack(store); }
         finally { dom.debugExportBtn.disabled = false; }
+      });
+    }
+
+    // Export the active tab (DSL or Config) as a .yaml file.
+    if (dom.exportBtn) {
+      dom.exportBtn.addEventListener('click', () => {
+        const cfg = store.state.ui.activeTab === 'config';
+        // Flush the editor's debounce first so we export exactly what's on
+        // screen, not the value from up to debounceMs ago.
+        (cfg ? configEditor : editor).flush();
+        (cfg ? exportConfig : exportDSL)(store);
+      });
+    }
+
+    // Import a .yaml into the active tab. The visible button proxies to a
+    // hidden <input type=file>; the read happens on its change event.
+    if (dom.importBtn && dom.importFile) {
+      dom.importBtn.addEventListener('click', () => dom.importFile.click());
+      dom.importFile.addEventListener('change', async () => {
+        const file = dom.importFile.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        const kind = store.state.ui.activeTab === 'config' ? 'config' : 'dsl';
+        applyImport(store, kind, text); // persists + emits → pipeline rerenders
+        // store→textarea isn't auto-wired (the editor is normally the
+        // source), so push the imported text into the visible editor too.
+        if (kind === 'config') configEditor.setValue(text);
+        else editor.setValue(text);
+        dom.importFile.value = ''; // allow re-importing the same file
       });
     }
   }

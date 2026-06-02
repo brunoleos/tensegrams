@@ -59,6 +59,11 @@
             <button class="tab" id="tab-config" role="tab" aria-selected="false" aria-controls="config-editor" type="button">Config</button>
           </div>
           <span id="errors" class="errors" role="status" aria-live="polite"></span>
+          <div class="io-actions">
+            <button id="export-btn" class="btn icon-btn" type="button" aria-label="Exportar DSL ou Config" title="Exportar a aba ativa (DSL/Config) como .yaml">⤓</button>
+            <button id="import-btn" class="btn icon-btn" type="button" aria-label="Importar DSL ou Config" title="Importar um .yaml para a aba ativa (DSL/Config)">⤒</button>
+            <input id="import-file" type="file" accept=".yaml,.yml,text/yaml,text/plain" hidden aria-hidden="true">
+          </div>
         </div>
         <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"
                   aria-label="Código DSL"></textarea>

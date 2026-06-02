@@ -37,6 +37,7 @@ O workflow [.github/workflows/deploy-tensegrams.yml](.github/workflows/deploy-te
    - **Botão direito** (desktop) → menu de contexto.
 5. **Toggle as camadas** clicando nos chips para esconder/mostrar nós e arestas.
 6. **Pan/zoom**: scroll para zoom; arrastar para pan.
+7. **Importar / Exportar**: ao lado das abas **DSL/Config** há dois botões (`⤓` exportar, `⤒` importar) que agem na **aba ativa**. Exportar baixa a DSL ou a config como arquivo `.yaml`; importar carrega um `.yaml` de volta (substitui o conteúdo da aba e re-renderiza). YAML inválido aparece na barra de erros, sem quebrar a cena.
 
 ## DSL (YAML)
 
@@ -222,7 +223,7 @@ O renderer faz **culling por viewport** (só desenha elementos dentro do retâng
 │   ├── store.js             # estado da UI + persistência localStorage
 │   ├── viewport.js          # pan/zoom/culling
 │   ├── version.js           # build metadata (SHA carimbado no deploy)
-│   ├── app/{boot,pipeline,wiring,gestures,console-buffer,debug-export}.js
+│   ├── app/{boot,pipeline,wiring,gestures,console-buffer,debug-export,download,dsl-io}.js
 │   ├── dsl/
 │   │   ├── parser.js        # YAML doc → { options, connections, nodes, edges }
 │   │   ├── ir.js            # parsed YAML → GraphIR (consumido por layout/router)
@@ -247,7 +248,7 @@ O renderer faz **culling por viewport** (só desenha elementos dentro do retâng
 │   └── controls/{layers,abstraction,drill,config-editor,config-schema,yaml-highlight}.js
 ├── scripts/build-dist.js   # monta dist/ (cópia do conjunto deployável, sem bundler)
 ├── tests/                   # node --test (Node 22+) — espelha a árvore de src/
-├── e2e/                     # Playwright (18 specs): bootstrap, temas, layouts×routers, …
+├── e2e/                     # Playwright (19 specs): bootstrap, temas, layouts×routers, import/export, …
 ├── e2e-prod/                # smoke visual contra o deploy publicado
 └── dist/                    # (gitignored) saída de `npm run build` — é o que vai pro Pages
 ```
@@ -260,7 +261,7 @@ O renderer faz **culling por viewport** (só desenha elementos dentro do retâng
 node --test $(find tests -name '*.test.js')
 ```
 
-Cobertura ampla: parser, IR builder, todos os layouts/routers, solver físico de routing, projeção de abstração, store, renderer (com mock de DOM), LOD/culling, endpoint styles, integração end-to-end. ~735 casos em ~70 arquivos (espelhando a árvore de `src/`).
+Cobertura ampla: parser, IR builder, todos os layouts/routers, solver físico de routing, projeção de abstração, store, renderer (com mock de DOM), LOD/culling, endpoint styles, import/export, integração end-to-end. ~751 casos em ~72 arquivos (espelhando a árvore de `src/`).
 
 **E2E (Playwright):**
 
@@ -381,7 +382,7 @@ DSL + config + escolhas de layout/router + tema + estado do drawer + camadas esc
 
 ## Status
 
-Migração da DSL e do config para YAML concluída (hard cut, v1 → v2). Suítes: **735/735 unit** verdes; **e2e** com 223 specs ativos + 7 skip (230 no total) nos dois projetos — verde sob a política de retry do CI (`retries: 1`). Rodando local sem retry, ~5 specs sensíveis a timing/snapshot golden podem precisar de re-run (a suíte roda sequencial de propósito).
+Migração da DSL e do config para YAML concluída (hard cut, v1 → v2). Suítes: **751/751 unit** verdes; **e2e** com 233 specs ativos + 7 skip (240 no total) nos dois projetos — verde sob a política de retry do CI (`retries: 1`). Rodando local sem retry, specs sensíveis a timing/snapshot golden podem precisar de re-run (a suíte roda sequencial de propósito).
 
 Próximos passos abertos:
 - Editor estruturado para a DSL (espelho do que existe pra config): chips por nó / por aresta com schema-driven popovers.

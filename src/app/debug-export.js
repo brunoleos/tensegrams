@@ -4,6 +4,7 @@
 
 import { VERSION } from '../version.js';
 import { snapshotConsole } from './console-buffer.js';
+import { downloadTextFile, fileTimestamp } from './download.js';
 
 // Mark Map/Set values for round-trippable serialisation. Plain objects pass
 // through unchanged.
@@ -70,15 +71,6 @@ export async function buildDebugPack(store) {
 
 export async function exportDebugPack(store) {
   const pack = await buildDebugPack(store);
-  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  a.href = url;
-  a.download = `tensegrams-debug-${ts}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Free the blob after the download starts.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadTextFile(`tensegrams-debug-${fileTimestamp()}.json`,
+                   JSON.stringify(pack, null, 2), 'application/json');
 }

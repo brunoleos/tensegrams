@@ -549,6 +549,11 @@ textarea#config-editor.editor-input::selection {
   border-bottom: 1px solid var(--border);
 }
 .editor-header-title { display: flex; align-items: center; gap: 8px; }
+/* Import/Export actions live next to the DSL/Config tabs — they act on the
+   active tab. Kept compact so the header stays slim. */
+.io-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.io-actions .btn { min-height: 28px; }
+.io-actions .icon-btn { width: 28px; font-size: 15px; }
 .errors {
   font-weight: 400;
   color: var(--muted);
