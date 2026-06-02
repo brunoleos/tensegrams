@@ -1,0 +1,99 @@
+name: Deploy tensegrams to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install deps (yaml runtime needed by parser/config)
+        run: npm ci
+      - name: Run tensegrams unit suite
+        run: node --test $(find tests -name '*.test.js')
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install Playwright deps
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Run Chromium E2E
+        run: npx playwright test --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+
+  deploy:
+    needs: [test, e2e]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install runtime deps so the importmap can resolve `yaml`
+        # The browser entry of the SPA imports `yaml` via an <importmap> that
+        # points at ./node_modules/yaml/browser/index.js. We need the package
+        # tree inside the artifact published to Pages — `npm ci --omit=dev`
+        # skips Playwright et al, keeping the upload small.
+        run: npm ci --omit=dev
+      - name: Stamp short commit hash into version.js
+        # Replaces the `dev` default in src/version.js with the short SHA of
+        # this commit. The UI surfaces it in the HUD so users can confirm at
+        # a glance which build they're actually running (cache busting aid).
+        # Short SHAs are hex-only, safe inside single quotes. Runs BEFORE the
+        # build so the stamped version.js is copied into dist/.
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          printf "export const VERSION = '%s';\n" "$SHORT_SHA" \
+            > src/version.js
+          cat src/version.js
+      - name: Build deployable bundle into dist/
+        # Copies only the deployable set (index.html, style.css, src/,
+        # yaml/browser) into dist/ — keeps tests/, e2e/, .git/ out of Pages.
+        run: npm run build
+      - uses: actions/configure-pages@v5
+        with:
+          # Liga o GitHub Pages (fonte = GitHub Actions) na primeira execução,
+          # sem precisar habilitar manualmente em Settings → Pages. Idempotente.
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

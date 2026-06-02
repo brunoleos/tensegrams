@@ -1,0 +1,9 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+# Logs de ferramentas (ex.: servidor MCP do Excalidraw)
+*.log
+# Screenshots E2E são artefatos demonstrativos do redesenho; regerados
+# rodando `npx playwright test e2e/19-perimeter-rail-redesign.spec.js`.
+screenshots-redesign/

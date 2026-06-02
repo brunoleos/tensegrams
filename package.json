@@ -1,0 +1,25 @@
+{
+  "name": "tensegrams",
+  "private": true,
+  "type": "module",
+  "description": "Tensegrams SPA + E2E test harness. Runtime dep: yaml for the YAML DSL/config parsers.",
+  "scripts": {
+    "unit": "node --test $(find tests -name '*.test.js')",
+    "test:unit": "node --test $(find tests -name '*.test.js')",
+    "serve": "python3 -m http.server 5173 --bind 127.0.0.1",
+    "build": "node scripts/build-dist.js",
+    "serve:dist": "npm run build && python3 -m http.server 5180 --bind 127.0.0.1 --directory dist",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "debug:svg": "node e2e/debug-snapshot.js",
+    "debug:assert": "node e2e/debug-snapshot.js --example=containers --layout=live --router=orthogonal --assert"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "pngjs": "^7.0.0"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  }
+}

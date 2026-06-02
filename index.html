@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="color-scheme" content="dark light">
+  <title>Tensegrams — DSL & visualizador</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "yaml": "./node_modules/yaml/browser/index.js"
+    }
+  }
+  </script>
+</head>
+<body data-editor-state="expanded">
+  <main id="app">
+    <header class="topbar">
+      <button id="editor-toggle" class="btn icon-btn" type="button"
+              aria-label="Recolher / expandir DSL"
+              aria-expanded="true"
+              aria-controls="editor-pane"
+              title="Recolher / expandir editor DSL">▾</button>
+      <div class="brand">Tensegrams</div>
+      <nav class="topbar-controls" aria-label="Controles do diagrama">
+        <label class="ctrl">
+          <span>Layout</span>
+          <select id="layout-select" aria-label="Layout"></select>
+        </label>
+        <label class="ctrl">
+          <span>Roteamento</span>
+          <select id="router-select" aria-label="Roteamento"></select>
+        </label>
+        <label class="ctrl">
+          <span>Tema</span>
+          <select id="theme-select" aria-label="Tema">
+            <option value="dark">Escuro</option>
+            <option value="light">Claro</option>
+            <option value="sepia">Sépia</option>
+            <option value="contrast">Alto contraste</option>
+          </select>
+        </label>
+        <button id="fit" class="btn" aria-label="Ajustar à tela" title="Ajustar (F)">Ajustar</button>
+        <button id="debug-export-btn" class="btn" aria-label="Baixar pacote de debug" title="Baixar pacote de debug (.json com DSL, Config, IR, layout, HTML, screenshot, console)">Debug pack</button>
+        <label class="ctrl" style="flex-shrink: 0;">
+          <input id="debug-bbox-checkbox" type="checkbox" aria-label="Debug: BBoxes de colisão">
+          <span>Debug</span>
+        </label>
+      </nav>
+    </header>
+
+    <section class="split">
+      <aside class="editor-pane" id="editor-pane">
+        <div class="editor-header">
+          <div class="tabs" role="tablist" aria-label="Painéis de entrada">
+            <button class="tab" id="tab-dsl"    role="tab" aria-selected="true"  aria-controls="editor"        type="button">DSL</button>
+            <button class="tab" id="tab-config" role="tab" aria-selected="false" aria-controls="config-editor" type="button">Config</button>
+          </div>
+          <span id="errors" class="errors" role="status" aria-live="polite"></span>
+        </div>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off"
+                  aria-label="Código DSL"></textarea>
+        <div id="config-pane" class="config-pane" hidden>
+          <div class="config-mode">
+            <button class="cfg-mode" id="cfg-mode-form"  type="button" aria-pressed="true">Estruturado</button>
+            <button class="cfg-mode" id="cfg-mode-text"  type="button" aria-pressed="false">Texto</button>
+          </div>
+          <div id="config-form" class="config-form"></div>
+          <textarea id="config-editor" spellcheck="false" autocapitalize="off" autocomplete="off"
+                    aria-label="Configurações de layout e roteamento" hidden></textarea>
+        </div>
+      </aside>
+
+      <div class="splitter" id="splitter" role="separator"
+           aria-orientation="vertical" tabindex="0"
+           aria-label="Redimensionar painel"></div>
+
+      <section class="preview-pane">
+        <div class="preview-header">
+          <div id="breadcrumb" class="breadcrumb-host"></div>
+          <div id="drill-chips" class="chips-host primary"></div>
+          <div id="layer-chips" class="chips-host secondary"></div>
+        </div>
+        <svg id="canvas" xmlns="http://www.w3.org/2000/svg"
+             role="img" aria-label="Preview do diagrama"></svg>
+        <div class="zoom-fab" aria-label="Controles de zoom" role="group">
+          <button id="zoom-in"  class="btn icon-btn" type="button" aria-label="Mais zoom">+</button>
+          <button id="zoom-out" class="btn icon-btn" type="button" aria-label="Menos zoom">−</button>
+          <button id="zoom-reset" class="btn icon-btn" type="button" aria-label="Resetar zoom">1×</button>
+        </div>
+        <div id="context-menu" class="context-menu" role="menu" hidden></div>
+        <div id="action-fab" class="action-fab" role="region" aria-label="Menu de ações"></div>
+      </section>
+    </section>
+
+    <div id="hud" aria-live="polite">
+      <span id="zoom-label">100%</span>
+      <span class="muted">scroll/pinch = zoom · arrastar = pan · clique container = entrar · esc = sair</span>
+      <span id="version-label" class="muted version-label" title="Versão do build (commit hash). Útil pra confirmar que o navegador não está servindo JS antigo."></span>
+    </div>
+  </main>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

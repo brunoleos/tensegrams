@@ -1,0 +1,955 @@
+/* ===== themes via CSS custom properties =====
+   Dark is the default; light is opt-in via [data-theme="light"].
+   Add a new theme by defining another [data-theme="x"] block. */
+:root, [data-theme="dark"] {
+  --bg:              #0f172a;
+  --grid:            #1e293b;
+  --panel:           #111827;
+  --panel-soft:      #1f2937;
+  --border:          #334155;
+  --text:            #e2e8f0;
+  --muted:           #94a3b8;
+  --accent:          #60a5fa;
+  --accent-soft:     #1e3a8a;
+  --danger:          #fca5a5;
+  --danger-soft:     #4c1d24;
+
+  --node-fill:       #1f2937;
+  --node-stroke:     #cbd5e1;
+  --container-fill:  #111827;
+  --container-stroke:#475569;
+  --container-header:#334155;
+  --container-label: #cbd5e1;
+  --edge:            #94a3b8;
+
+  --shadow:          0 4px 16px rgba(0,0,0,.4);
+  --hit-target:      44px; /* Apple/WCAG min tap target */
+
+  /* YAML syntax highlighting palette — see .yh-* rules below. */
+  --syntax-key:      #93c5fd;
+  --syntax-string:   #fcd34d;
+  --syntax-number:   #f0abfc;
+  --syntax-keyword:  #fda4af;
+  --syntax-comment:  #64748b;
+  --syntax-punct:    #94a3b8;
+}
+[data-theme="light"] {
+  --bg:              #f8fafc;
+  --grid:            #e5e7eb;
+  --panel:           #ffffff;
+  --panel-soft:      #f1f5f9;
+  --border:          #e2e8f0;
+  --text:            #0f172a;
+  --muted:           #64748b;
+  --accent:          #2563eb;
+  --accent-soft:     #eff6ff;
+  --danger:          #b91c1c;
+  --danger-soft:     #fef2f2;
+
+  --node-fill:       #ffffff;
+  --node-stroke:     #1f2937;
+  --container-fill:  #f8fafc;
+  --container-stroke:#94a3b8;
+  --container-header:#cbd5e1;
+  --container-label: #334155;
+  --edge:            #475569;
+
+  --shadow:          0 4px 16px rgba(15,23,42,.08);
+
+  --syntax-key:      #1d4ed8;
+  --syntax-string:   #92400e;
+  --syntax-number:   #7c2d92;
+  --syntax-keyword:  #be123c;
+  --syntax-comment:  #6b7280;
+  --syntax-punct:    #64748b;
+}
+[data-theme="sepia"] {
+  --bg:              #f4ecd8;
+  --grid:            #e6dcbf;
+  --panel:           #fbf6e7;
+  --panel-soft:      #efe6cc;
+  --border:          #d6c9a4;
+  --text:            #3a2a14;
+  --muted:           #7a624a;
+  --accent:          #b45309;
+  --accent-soft:     #fef3c7;
+  --danger:          #b91c1c;
+  --danger-soft:     #fef2f2;
+
+  --node-fill:       #fffdf5;
+  --node-stroke:     #5b4424;
+  --container-fill:  #f4ecd8;
+  --container-stroke:#b8a06d;
+  --container-header:#e0d4a8;
+  --container-label: #6b4f2a;
+  --edge:            #7a624a;
+
+  --shadow:          0 4px 16px rgba(91,68,36,.12);
+
+  --syntax-key:      #8b4513;
+  --syntax-string:   #7c2d12;
+  --syntax-number:   #9333ea;
+  --syntax-keyword:  #b91c1c;
+  --syntax-comment:  #9c8c6e;
+  --syntax-punct:    #7a624a;
+}
+[data-theme="contrast"] {
+  --bg:              #000000;
+  --grid:            #1a1a1a;
+  --panel:           #0a0a0a;
+  --panel-soft:      #141414;
+  --border:          #ffffff;
+  --text:            #ffffff;
+  --muted:           #e5e5e5;
+  --accent:          #ffd000;
+  --accent-soft:     #4a3d00;
+  --danger:          #ff5757;
+  --danger-soft:     #3a0000;
+
+  --node-fill:       #000000;
+  --node-stroke:     #ffffff;
+  --container-fill:  #000000;
+  --container-stroke:#ffd000;
+  --container-header:#1a1a1a;
+  --container-label: #ffd000;
+  --edge:            #ffffff;
+
+  --shadow:          0 0 0 1px #ffffff;
+
+  --syntax-key:      #ffd000;
+  --syntax-string:   #80ff80;
+  --syntax-number:   #ff80ff;
+  --syntax-keyword:  #ffaa55;
+  --syntax-comment:  #aaaaaa;
+  --syntax-punct:    #ffffff;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  /* Prevent iOS Safari from zooming on input focus or rubber-banding */
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100dvh; /* dynamic viewport — survives mobile address-bar collapse */
+}
+
+/* ============ topbar ============ */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: .02em;
+  margin-right: auto;
+}
+.topbar-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ctrl {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: var(--muted);
+  gap: 2px;
+}
+.ctrl select,
+.ctrl input[type="color"] {
+  font-size: 13px;
+  padding: 6px 8px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  touch-action: manipulation;
+}
+.btn:hover { background: var(--panel-soft); }
+.btn:active { transform: translateY(1px); }
+.btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.icon-btn {
+  width: 36px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ============ split layout ============ */
+.split {
+  --editor-w: 360px;
+  --editor-h: 280px;
+  display: grid;
+  grid-template-areas: "editor splitter preview";
+  grid-template-columns: minmax(140px, var(--editor-w)) 6px minmax(0, 1fr);
+  overflow: hidden;
+  position: relative;
+}
+.editor-pane {
+  grid-area: editor;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Tabs inside the editor header */
+.tabs { display: flex; gap: 4px; }
+.tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 32px;
+  touch-action: manipulation;
+}
+.tab:hover { background: var(--panel-soft); color: var(--text); }
+.tab[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ============ YAML editor — syntax highlight overlay ============
+   Each editable textarea is wrapped in `.editor-host`. A `<pre class=
+   "editor-highlight">` sits behind it showing tokenized HTML, and the
+   textarea's text color is set to transparent so only the caret and
+   selection remain visible — the colored overlay does the rest. */
+.editor-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+/* When the underlying textarea is `hidden` (mode switch), so is the
+   wrapper. Avoids dangling overlay frames in the layout. */
+.editor-host:has(.editor-input[hidden]) { display: none; }
+
+.editor-highlight {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 12px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  pointer-events: none;
+  background: var(--panel);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+.editor-host:has(#editor) .editor-highlight    { font-size: 14px; }
+.editor-host:has(#config-editor) .editor-highlight { font-size: 13px; }
+
+/* Higher-specificity to defeat the `#editor` / `#config-editor` rules
+   below — those still own font + padding, but the visible glyphs and
+   background move to the overlay. */
+textarea#editor.editor-input,
+textarea#config-editor.editor-input {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+}
+/* Selection bg comes from the textarea, but its glyphs are transparent
+   so the highlighted text below leaks through — keep the highlight
+   subtle so the colored token stays readable underneath. */
+textarea#editor.editor-input::selection,
+textarea#config-editor.editor-input::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.yh-key      { color: var(--syntax-key); font-weight: 500; }
+.yh-string   { color: var(--syntax-string); }
+.yh-number   { color: var(--syntax-number); }
+.yh-keyword  { color: var(--syntax-keyword); font-style: italic; }
+.yh-comment  { color: var(--syntax-comment); font-style: italic; }
+.yh-punct    { color: var(--syntax-punct); }
+
+/* Both textareas share base styling — visibility toggled via [hidden] */
+#config-editor {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 12px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: none;
+  background: var(--panel);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+#config-editor[hidden] { display: none; }
+#editor[hidden] { display: none; }
+
+/* Config pane wraps the mode-switch + the two views (form/text). */
+.config-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.config-pane[hidden] { display: none; }
+.config-mode {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.cfg-mode {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 28px;
+}
+.cfg-mode:hover { background: var(--panel-soft); color: var(--text); }
+.cfg-mode[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.config-form {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.config-form[hidden] { display: none; }
+
+.cfg-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cfg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 1px 8px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+  margin: 0 1px;
+}
+.cfg-chip:hover  { border-color: var(--accent); color: var(--accent); }
+.cfg-chip:focus  { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cfg-chip-readonly { cursor: default; opacity: .6; }
+.cfg-chip-boolean, .cfg-chip-tribool, .cfg-chip-boolean-forbid {
+  font-weight: 600;
+}
+.cfg-remove {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  margin-left: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.cfg-pre .cfg-remove:hover { color: #e25e5e; }
+.config-form:hover .cfg-remove { opacity: .6; }
+.config-form:hover .cfg-remove:hover { opacity: 1; }
+
+.cfg-adders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.cfg-add {
+  background: var(--panel-soft);
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cfg-add:hover { color: var(--accent); border-color: var(--accent); }
+.cfg-add-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0;
+}
+.cfg-add-inline {
+  padding: 1px 8px;
+  font-size: 11px;
+  opacity: .75;
+}
+.cfg-add-inline:hover { opacity: 1; }
+
+/* Popover editor */
+.cfg-popover {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  max-width: 320px;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.cfg-popover-help { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.cfg-popover input[type="number"],
+.cfg-popover input[type="text"],
+.cfg-popover select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-soft);
+  color: var(--text);
+  border-radius: 4px;
+  font: inherit;
+  min-height: 32px;
+}
+.cfg-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cfg-choice {
+  flex: 1;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  min-height: 32px;
+}
+.cfg-choice:hover { border-color: var(--accent); }
+.cfg-choice.on    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.cfg-popover-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.cfg-popover-actions button {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.cfg-popover-actions button.primary {
+  background: var(--accent);
+  color: var(--panel);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Splitter — drag handle between panels */
+.splitter {
+  grid-area: splitter;
+  background: var(--border);
+  cursor: col-resize;
+  position: relative;
+  transition: background .15s ease;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.splitter:hover,
+.splitter:focus-visible,
+.splitter.active { background: var(--accent); outline: none; }
+/* Enlarge the hit target without changing visual width */
+.splitter::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.editor-header-title { display: flex; align-items: center; gap: 8px; }
+.errors {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 11px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.errors.has-errors { color: var(--danger); }
+#editor {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 12px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;  /* >=16px would block iOS auto-zoom; 14 ok with viewport meta */
+  line-height: 1.55;
+  resize: none;
+  background: var(--panel);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ============ preview ============ */
+.preview-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.breadcrumb-host, .chips-host { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.chips-host.primary   { margin-left: auto; }
+/* secondary row sits below the primary on its own line */
+.chips-host.secondary { flex-basis: 100%; justify-content: flex-end; opacity: .8; }
+.chips-host.secondary .chip { font-size: 10px; padding: 3px 8px; min-height: 22px; }
+.chips-host:empty { display: none; }
+.drill-control.empty { display: none; }
+
+.breadcrumb {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.crumb {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  min-height: 28px;
+  border-radius: 4px;
+}
+.crumb:hover { background: var(--panel-soft); text-decoration: underline; }
+.crumb.current { color: var(--text); cursor: default; font-weight: 600; }
+.crumb.current:hover { background: transparent; text-decoration: none; }
+.crumb-sep { color: var(--muted); }
+
+.chip {
+  border: 1px solid var(--border);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+}
+.chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip:active { transform: translateY(1px); }
+.chip-untagged { font-style: italic; opacity: .85; }
+
+.drill-chip {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.drill-chip::after { content: ' ›'; opacity: .7; }
+.drill-chip:hover { background: var(--accent); color: var(--panel); }
+
+.layers-control, .drill-control { display: flex; gap: 4px; flex-wrap: wrap; }
+.layers-control .muted { font-size: 11px; color: var(--muted); }
+
+#canvas {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 20px 20px;
+  touch-action: none;
+  cursor: default;
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#canvas.panning { cursor: grabbing; }
+#canvas.pan-ready { cursor: grab; }
+#canvas.dragging-node { cursor: grabbing; }
+
+/* floating zoom controls — visible especially on touch */
+.zoom-fab {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 3;
+}
+.zoom-fab .btn {
+  width: var(--hit-target);
+  height: var(--hit-target);
+  min-height: var(--hit-target);
+  padding: 0;
+  font-size: 18px;
+}
+
+/* floating action FAB — bottom-left, mirror of the zoom-fab.
+   Hosts per-node actions for the current selection; on touch this
+   replaces the right-click context menu. */
+.action-fab {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 3;
+  min-width: 56px;
+  max-width: 240px;
+  font-size: 13px;
+  opacity: 0.85;
+  transition: opacity .15s ease;
+}
+.action-fab:hover, .action-fab:focus-within { opacity: 1; }
+.action-fab:not(.has-selection) {
+  /* Idle: shrink to a discreet pill so it doesn't fight for attention. */
+  padding: 2px;
+  opacity: 0.4;
+}
+.action-fab .fab-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+}
+.action-fab .fab-name {
+  flex: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.action-fab .fab-toggle {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font: inherit;
+  min-height: var(--hit-target);
+}
+.action-fab .fab-toggle:hover { background: var(--panel-soft); }
+.action-fab .fab-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.action-fab .fab-item {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  min-height: var(--hit-target);
+}
+.action-fab .fab-item:hover,
+.action-fab .fab-item:focus-visible {
+  background: var(--panel-soft);
+  outline: none;
+}
+.action-fab .fab-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* container right-click menu */
+.context-menu {
+  position: absolute;
+  min-width: 180px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+  font-size: 14px;
+}
+.context-menu[hidden] { display: none; }
+.context-menu .menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.context-menu .menu-item:hover,
+.context-menu .menu-item:focus-visible {
+  background: var(--panel-soft);
+  outline: none;
+}
+
+/* ============ SVG nodes/edges ============ */
+.node {
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.node[data-kind="container"] { cursor: pointer; }
+.node[data-kind="container"] > .node-rect {
+  fill: var(--container-fill);
+  stroke: var(--container-stroke);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 2;
+}
+.node[data-kind="container"] > .container-header {
+  fill: var(--container-header);
+  stroke: none;
+  cursor: pointer;
+}
+.node[data-kind="leaf"] > .node-rect {
+  fill: var(--node-fill);
+  stroke: var(--node-stroke);
+  stroke-width: 1.5;
+}
+.node.selected > .node-rect {
+  stroke: var(--accent, #38bdf8);
+  stroke-width: 2.5;
+}
+.node.selected > .container-header {
+  stroke: var(--accent, #38bdf8);
+  stroke-width: 2;
+}
+#canvas.dragging-node .node[data-kind="leaf"] > .node-rect { filter: brightness(1.1); }
+.node-label {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  fill: var(--text);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.node[data-kind="container"] > .node-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  fill: var(--container-label);
+}
+
+.edge { color: var(--edge); }
+.edge-path {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+  /* Edges are pure visual paths — never targets of pointer events.
+     Without this, an edge that crosses a container intercepts clicks
+     meant for drill-in. */
+  pointer-events: none;
+}
+.edge-label {
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px;
+  fill: var(--muted);
+  pointer-events: none;
+}
+
+/* LOD: at low zoom, hide labels to reduce DOM cost & clutter. Esconder
+   também a occlusion layer dentro da <mask>, senão o buraco persiste
+   sem texto cobrindo. */
+.lod-no-labels .node-label,
+.lod-no-labels .edge-label,
+.lod-no-labels .edge-label-occlusion {
+  display: none;
+}
+.lod-simple .node[data-kind="leaf"] > .node-rect {
+  rx: 12;
+}
+
+/* ============ HUD ============ */
+#hud {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.version-label {
+  margin-left: auto;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  opacity: .6;
+  letter-spacing: .02em;
+}
+#zoom-label {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+}
+.muted { color: var(--muted); }
+
+/* ============ responsive: mobile / narrow viewports ============ */
+@media (max-width: 760px) {
+  .topbar { padding: 6px 8px; gap: 6px; }
+  .brand { font-size: 14px; }
+  .ctrl span { display: none; } /* labels hidden — value is self-evident */
+  .topbar-controls { gap: 6px; width: 100%; }
+  .ctrl select { min-height: var(--hit-target); padding: 8px 10px; font-size: 14px; }
+  .btn { min-height: var(--hit-target); padding: 8px 12px; font-size: 14px; }
+
+  /* Vertical stack: preview top, splitter middle, editor as a bottom drawer */
+  .split {
+    grid-template-areas: "preview" "splitter" "editor";
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) 6px minmax(36px, var(--editor-h));
+  }
+  .editor-pane {
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .splitter { cursor: row-resize; }
+  .splitter::after { inset: -4px 0; }
+
+  /* Drawer collapsed/expanded states */
+  body[data-editor-state="collapsed"] .split {
+    grid-template-rows: minmax(0, 1fr) 6px 36px;
+  }
+  body[data-editor-state="collapsed"] #editor,
+  body[data-editor-state="collapsed"] #config-editor { display: none; }
+
+  /* On mobile, hide the desktop direction label etc. — already collapsed by .ctrl span */
+  #hud { font-size: 11px; padding: 4px 8px; }
+  .muted { white-space: normal; }
+}
+
+/* Larger screens: collapse the editor column instead of the row drawer. */
+@media (min-width: 761px) {
+  body[data-editor-state="collapsed"] .split {
+    grid-template-columns: 0 6px minmax(0, 1fr);
+  }
+  body[data-editor-state="collapsed"] .editor-pane {
+    visibility: hidden;
+  }
+}
