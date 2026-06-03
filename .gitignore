@@ -7,3 +7,8 @@ test-results/
 # Screenshots E2E são artefatos demonstrativos do redesenho; regerados
 # rodando `npx playwright test e2e/19-perimeter-rail-redesign.spec.js`.
 screenshots-redesign/
+
+# >>> agent-memory >>>
+.agent-memory-deploy/
+.agent-memory/.telemetry.jsonl
+# <<< agent-memory <<<
