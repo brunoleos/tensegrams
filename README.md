@@ -37,7 +37,7 @@ O workflow [.github/workflows/deploy-tensegrams.yml](.github/workflows/deploy-te
    - **Botão direito** (desktop) → menu de contexto.
 5. **Toggle as camadas** clicando nos chips para esconder/mostrar nós e arestas.
 6. **Pan/zoom**: scroll para zoom; arrastar para pan.
-7. **Importar / Exportar**: ao lado das abas **DSL/Config** há dois botões (`⤓` exportar, `⤒` importar) que agem na **aba ativa**. Exportar baixa a DSL ou a config como arquivo `.yaml`; importar carrega um `.yaml` de volta (substitui o conteúdo da aba e re-renderiza). YAML inválido aparece na barra de erros, sem quebrar a cena.
+7. **Importar / Exportar**: ao lado das abas **DSL/Config** há dois botões (`⤒` exportar, `⤓` importar) que agem na **aba ativa**. Exportar baixa a DSL ou a config como arquivo `.yaml`; importar carrega um `.yaml` de volta (substitui o conteúdo da aba e re-renderiza). YAML inválido aparece na barra de erros, sem quebrar a cena.
 
 ## DSL (YAML)
 
