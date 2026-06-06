@@ -3,9 +3,11 @@
 // viável e zera a velocidade no eixo restringido. O compilador instancia um
 // constraint por nó que declara `constraint:` na DSL.
 //
-// Coordenadas são de CENTRO (o World guarda centros + meia-extensão; o mapeador
-// converte para top-left no fim). Espelha a semântica de applyConstraint do
-// live legado (axis/rect/circle/parent-bounds).
+// O World guarda CENTROS (+ meia-extensão). Já os PARÂMETROS de entrada
+// (`value` do axis, `rect`, `circle`) estão em coordenadas de mundo da DSL no
+// sentido TOP-LEFT — o constraint soma a meia-extensão para converter ao
+// centro internamente (ex.: axis x fixa `centerX = value + halfW`). Espelha a
+// semântica de applyConstraint do live legado (axis/rect/circle/parent-bounds).
 
 import { STRIDE, X, Y, VX, VY, HALF_W, HALF_H } from '../world.js';
 

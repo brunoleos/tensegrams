@@ -70,7 +70,7 @@ export function eachCandidatePair(grid, fn) {
       for (let j = i + 1; j < n; j++) {
         const b = bucket[j];
         // bucket está em ordem ascendente de slot → a < b.
-        const pk = a * 4294967296 + b; // chave única (a,b)
+        const pk = a * 4294967296 + b; // chave única (a,b); exata p/ slots < 2^21 (domínio: ~centenas)
         if (seen.has(pk)) continue;
         seen.add(pk);
         fn(a, b);

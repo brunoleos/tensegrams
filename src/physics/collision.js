@@ -56,11 +56,14 @@ export function createCollision(opts = {}) {
       const oa = a * STRIDE, ob = b * STRIDE;
       const dx = data[ob + X] - data[oa + X];
       const dy = data[ob + Y] - data[oa + Y];
-      const sx = data[oa + HALF_W] + data[ob + HALF_W] + pad;
-      const sy = data[oa + HALF_H] + data[ob + HALF_H] + pad;
+      // Contrato = PADDED BBox: `pad` é o gap POR LADO (cada corpo contribui o
+      // seu), igual ao separateBodiesHard do v1 → separação alvo = 2·pad. A
+      // broad-phase (buildGrid) infla cada corpo por `pad`, então é consistente.
+      const sx = data[oa + HALF_W] + data[ob + HALF_W] + 2 * pad;
+      const sy = data[oa + HALF_H] + data[ob + HALF_H] + 2 * pad;
       const ox = sx - Math.abs(dx);
       const oy = sy - Math.abs(dy);
-      const pk = a * 4294967296 + b;
+      const pk = a * 4294967296 + b; // exata p/ slots < 2^21 (domínio: ~centenas)
 
       if (ox <= 0 || oy <= 0) { acc.delete(pk); return; } // separados
 

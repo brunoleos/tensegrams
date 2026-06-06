@@ -72,7 +72,6 @@ export function startLayoutV2(ir, opts = {}) {
   const childIdSet = new Set(ir.nodes.filter((n) => n.parent).map((n) => n.parent));
   const bodyNodes = ir.nodes.filter((n) => !n.hasChildren || !childIdSet.has(n.id));
   const containersWithChildren = ir.nodes.filter((n) => n.hasChildren && childIdSet.has(n.id));
-  const allContainers = ir.nodes.filter((n) => n.hasChildren);
 
   const world = createWorld(Math.max(8, bodyNodes.length));
   const idToSlot = new Map();

@@ -96,3 +96,20 @@ describe('physics/collision — impulso por massa + PI', () => {
     for (const e of col._acc.values()) assert.ok(e.v <= 50, 'acumulador clampado');
   });
 });
+
+describe('physics/collision — contrato de pad (gap por lado)', () => {
+  test('no rest não há overlap da PADDED BBox: gap >= halfA+halfB+2*pad (igual ao v1)', () => {
+    // A colisão só empurra (nunca puxa); sem força oposta o gap fica >= contato
+    // padded (e pode derivar além por inércia). O contrato é o limite inferior:
+    // nenhuma sobreposição da BBox inflada por `pad` em cada lado.
+    const w = createWorld(4);
+    const a = addBody(w, { x: -5, halfW: 10, halfH: 10, layers: L('g'), invMass: 1 });
+    const b = addBody(w, { x: 5, halfW: 10, halfH: 10, layers: L('g'), invMass: 1 });
+    const pad = 8;
+    const col = createCollision({ Kp: 0.3, Ki: 0.05, pad });
+    for (let i = 0; i < 1500; i++) { clearForces(w); col.apply(w, { dt: 1 }); integrate(w, { damping: 0.5 }); }
+    const gap = Math.abs(w.data[b * STRIDE + X] - w.data[a * STRIDE + X]);
+    const minGap = 10 + 10 + 2 * pad; // 36 — contato da padded BBox
+    assert.ok(gap >= minGap - 1e-3, `gap ${gap.toFixed(2)} >= ${minGap} (sem overlap padded)`);
+  });
+});
