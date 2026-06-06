@@ -27,6 +27,7 @@ import {
 import { createSolver } from '../physics/solver.js';
 import { createCentral } from '../physics/contributors/central.js';
 import { createTagForces } from '../physics/contributors/tag-forces.js';
+import { createConnectivitySpring } from '../physics/contributors/connectivity-spring.js';
 import { createCollision } from '../physics/collision.js';
 import { createConstraint } from '../physics/constraints/index.js';
 
@@ -47,6 +48,12 @@ const DEFAULTS = {
   alphaKick: 0.5,
   substeps: 1,
   interactionMode: 'frozen',
+  // Mola de conectividade (#opt-in, Fase 3): arestas puxam seus endpoints.
+  // Default OFF preserva o modelo atrator-central. Knobs de baixo nível
+  // (ADR-0007) na config; chaves desconhecidas são forward-compat.
+  connectivitySpring: false,
+  edgeSpring: 0.05,
+  edgeRestLength: 120,
 };
 
 function maxWeight(map) {
@@ -124,6 +131,18 @@ export function startLayoutV2(ir, opts = {}) {
     createTagForces({ entries: tagEntries, tagToSlots, kAttract: cfg.tagAttract, kRepel: cfg.tagRepel }),
     createCollision({ Kp: cfg.collisionK, Ki: cfg.collisionKi, pad: cfg.collisionPadding, pairFilter }),
   ];
+
+  // Campo opt-in: mola de conectividade (Fase 3). Conecta endpoints que são
+  // corpos (leaves / containers vazios); arestas tocando container com filhos
+  // (posição derivada, sem corpo) são puladas.
+  if (cfg.connectivitySpring) {
+    const edges = [];
+    for (const e of ir.edges) {
+      const a = idToSlot.get(e.source), b = idToSlot.get(e.target);
+      if (a !== undefined && b !== undefined) edges.push({ a, b, rest: cfg.edgeRestLength });
+    }
+    if (edges.length) contributors.push(createConnectivitySpring({ k: cfg.edgeSpring, edges }));
+  }
 
   // Estado de saída + cache de containers (para parent-bounds com lag de 1 tick).
   let lastContainers = new Map();
