@@ -9,6 +9,7 @@
 // panel in the UI). See DEFAULTS below for every knob.
 
 import { DEFAULT_OPTIONS } from '../../adapter.js';
+import { startLayoutV2 } from '../../compile-world.js';
 import { buildCollisionResolver } from '../../collision.js';
 import { setsEqual, freezeOthersForDrag, unfreezeOthersAfterRelease } from './pins.js';
 import { HEADER } from './container-geometry.js';
@@ -46,6 +47,11 @@ export const adapter = {
   caps: { containers: true, ports: false, layered: false, interactive: true, providesRouting: false },
   async load() { /* nothing */ },
   start(ir, opts = {}) {
+    // Cutover atrás de flag: `cfg.live.engine === 'v2'` usa o motor de física
+    // unificado (src/physics/ via compile-world). Default segue no v1 legado.
+    if (opts.live && opts.live.engine === 'v2') {
+      return startLayoutV2(ir, opts);
+    }
     return runSession(ir, { ...DEFAULT_OPTIONS, ...opts });
   },
 };
