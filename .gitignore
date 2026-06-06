@@ -2,6 +2,7 @@ node_modules/
 dist/
 playwright-report/
 test-results/
+.playwright-mcp/
 # Logs de ferramentas (ex.: servidor MCP do Excalidraw)
 *.log
 # Screenshots E2E são artefatos demonstrativos do redesenho; regerados
