@@ -26,19 +26,19 @@ Não se aplica para:
 
 Se ainda não estão no contexto da sessão atual, leia:
 - `AGENTS.md` (constituição do projeto — geralmente já está no contexto via auto-load)
-- `.agent-memory/STATE.md` (foco atual da sessão)
-- `.agent-memory/manifest/INDEX.md` (mapa resumido de capacidades)
-- `.agent-memory/decisions/INDEX.md` (decisões arquiteturais resumidas)
+- `.feat-memory/STATE.md` (foco atual da sessão)
+- `.feat-memory/manifest/INDEX.md` (mapa resumido de capacidades)
+- `.feat-memory/decisions/INDEX.md` (decisões arquiteturais resumidas)
 
 O total fica dentro do orçamento de retomada definido em `AGENTS.md::budgets::resumption_max_bytes` (padrão: 12KB).
 
-**Detecção de pós-merge.** Se o último commit é um merge commit (verifique com `git log -1 --pretty=%P` retornando dois ou mais hashes de parent), os índices podem estar desatualizados porque o `.gitattributes` configurou `merge=ours` para mantê-los, deixando para o agente regenerar. Rode `agent-memory audit` antes de prosseguir, o que valida a estrutura mesclada e regenera os índices automaticamente. Se a auditoria reportar problemas (drift, colisões residuais, schemas quebrados), informe o usuário e sugira investigação antes de continuar.
+**Detecção de pós-merge.** Se o último commit é um merge commit (verifique com `git log -1 --pretty=%P` retornando dois ou mais hashes de parent), os índices podem estar desatualizados porque o `.gitattributes` configurou `merge=ours` para mantê-los, deixando para o agente regenerar. Rode `feat-memory audit` antes de prosseguir, o que valida a estrutura mesclada e regenera os índices automaticamente. Se a auditoria reportar problemas (drift, colisões residuais, schemas quebrados), informe o usuário e sugira investigação antes de continuar.
 
-Em seguida, verifique se o merge tocou artefatos da metodologia: `git log -1 --name-only --pretty=format: | grep -E '^(\.agent-memory/manifest/features/F-|\.agent-memory/decisions/[0-9]|AGENTS\.md)'`. Se houve mudança nesses caminhos, invoque a skill `memory-pull-brief` antes de seguir para o passo 2. A pull-brief brifa o usuário sobre o que veio do remote e ajusta o `STATE.md` se necessário, deixando-o consistente com a nova realidade antes da expansão seletiva de `active_*`.
+Em seguida, verifique se o merge tocou artefatos da metodologia: `git log -1 --name-only --pretty=format: | grep -E '^(\.feat-memory/manifest/features/F-|\.feat-memory/decisions/[0-9]|AGENTS\.md)'`. Se houve mudança nesses caminhos, invoque a skill `memory-pull-brief` antes de seguir para o passo 2. A pull-brief brifa o usuário sobre o que veio do remote e ajusta o `STATE.md` se necessário, deixando-o consistente com a nova realidade antes da expansão seletiva de `active_*`.
 
 ### 2. Expanda apenas o necessário
 
-Use `STATE.md::active_features` e `STATE.md::active_decisions` como filtro. Carregue **somente** os arquivos correspondentes em `.agent-memory/manifest/features/F-NNNN-*.md` e `.agent-memory/decisions/NNNN-*.md`. Não carregue o Manifest inteiro nem todos os ADRs — isso quebra o orçamento de contexto sem ganho.
+Use `STATE.md::active_features` e `STATE.md::active_decisions` como filtro. Carregue **somente** os arquivos correspondentes em `.feat-memory/manifest/features/F-NNNN-*.md` e `.feat-memory/decisions/NNNN-*.md`. Não carregue o Manifest inteiro nem todos os ADRs — isso quebra o orçamento de contexto sem ganho.
 
 ### 3. Apresente um briefing tático
 
@@ -61,10 +61,10 @@ Encerre o briefing perguntando se o usuário quer prosseguir a partir do `Next` 
 Após o briefing, invoque (silencioso, falha não bloqueia):
 
 ```bash
-agent-memory record session_start state_read=true
+feat-memory record session_start state_read=true
 ```
 
-Use `state_read=false` apenas se você pulou o passo 1 (não chegou a ler `STATE.md`). A telemetria é local-only (`.agent-memory/.telemetry.jsonl`, gitignored) e opt-out via `.meta.yaml::telemetry_enabled=false` — F-0014, ADR-0017. Sem rede, sem agregação central. O sinal serve ao mantenedor checar adesão via `agent-memory log --summary`.
+Use `state_read=false` apenas se você pulou o passo 1 (não chegou a ler `STATE.md`). A telemetria é local-only (`.feat-memory/.telemetry.jsonl`, gitignored) e opt-out via `.meta.yaml::telemetry_enabled=false` — F-0014, ADR-0017. Sem rede, sem agregação central. O sinal serve ao mantenedor checar adesão via `feat-memory log --summary`.
 
 ## Saída esperada
 
@@ -84,4 +84,4 @@ Quer prosseguir com o predicate pushdown ou tem outra prioridade?
 - Não apresente o briefing como se fosse a primeira vez quando a conversa já está em andamento
 - Não invente IDs ou referências que não estão nos índices
 - Não expanda features ou ADRs que não estão em `active_*` (custo de tokens sem ganho)
-- Não mostre o briefing em projetos que ainda não têm `STATE.md` populado — nesse caso, sugira rodar `agent-memory deploy <projeto>` ou invocar a skill `memory-deploy`
+- Não mostre o briefing em projetos que ainda não têm `STATE.md` populado — nesse caso, sugira rodar `feat-memory deploy <projeto>` ou invocar a skill `memory-deploy`

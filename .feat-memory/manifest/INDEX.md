@@ -22,4 +22,4 @@
 | F-0018 | debug-overlay-export | shipped | — | — | F-0005,F-0008 |
 | F-0019 | mobile-layout | shipped | — | — | F-0008,F-0010 |
 
-_Gerado por `agent-memory audit` em 2026-06-03T20:54:32+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-07T05:50:25+00:00. Não edite manualmente._

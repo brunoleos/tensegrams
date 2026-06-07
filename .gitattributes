@@ -1,25 +1,25 @@
-# >>> agent-memory >>>
+# >>> feat-memory >>>
 # Resolução automática de conflitos para artefatos da metodologia.
 #
 # A diretiva `merge=ours` mantém a versão local em qualquer merge,
 # descartando a outra sem gerar conflito. Aplica-se a:
 #
-# - Índices gerados (regenerados pelo `agent-memory audit` após merge)
+# - Índices gerados (regenerados pelo `feat-memory audit` após merge)
 # - STATE.md (foco da sessão é volátil; tentativa de mesclar produz texto
 #   incoerente sem ganho operacional)
 # - .meta.yaml (cli_path e deployed_at variam por máquina/deploy; cada
 #   dev mantém o reflexo do seu próprio último deploy)
 #
 # IMPORTANTE: para que `merge=ours` funcione, é necessário configurar
-# o driver no Git local. O `agent-memory deploy` faz isso automaticamente,
+# o driver no Git local. O `feat-memory deploy` faz isso automaticamente,
 # mas se precisar configurar manualmente em outro clone, execute:
 #
 #   git config merge.ours.driver true
 
-.agent-memory/manifest/INDEX.md             merge=ours
-.agent-memory/manifest/archive/INDEX.md     merge=ours
-.agent-memory/decisions/INDEX.md            merge=ours
-.agent-memory/decisions/superseded/INDEX.md merge=ours
-.agent-memory/STATE.md                      merge=ours
-.agent-memory/.meta.yaml                    merge=ours
-# <<< agent-memory <<<
+.feat-memory/manifest/INDEX.md             merge=ours
+.feat-memory/manifest/archive/INDEX.md     merge=ours
+.feat-memory/decisions/INDEX.md            merge=ours
+.feat-memory/decisions/superseded/INDEX.md merge=ours
+.feat-memory/STATE.md                      merge=ours
+.feat-memory/.meta.yaml                    merge=ours
+# <<< feat-memory <<<

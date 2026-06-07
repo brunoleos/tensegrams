@@ -12,4 +12,4 @@
 | ADR-0008 | 2026-06-02 | accepted | dsl,config | F-0013 |
 | ADR-0009 | 2026-06-02 | accepted | routing | F-0017 |
 
-_Gerado por `agent-memory audit` em 2026-06-03T20:54:32+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-07T05:50:25+00:00. Não edite manualmente._

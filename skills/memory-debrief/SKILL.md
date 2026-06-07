@@ -27,7 +27,7 @@ Se passou do alvo, corte. Detalhes mecânicos já vivem no código e na mensagem
 
 ### 1. Examine o que mudou
 
-`git status` + `git diff --staged` (ou `HEAD`). Identifique arquivos tocados, features impactadas (cruze com `.agent-memory/manifest/features/F-*.md::contracts`), e se houve mudança observável de comportamento.
+`git status` + `git diff --staged` (ou `HEAD`). Identifique arquivos tocados, features impactadas (cruze com `.feat-memory/manifest/features/F-*.md::contracts`), e se houve mudança observável de comportamento.
 
 ### 2. Atualize features tocadas
 
@@ -41,10 +41,10 @@ Se há capacidade nova sem entrada no Manifest, crie uma — formato em "Feature
 
 ### 3. Grave o checkpoint
 
-`STATE.md` é view derivada de `.agent-memory/checkpoints/` (ADR-0018). Você nunca o reescreve direto.
+`STATE.md` é view derivada de `.feat-memory/checkpoints/` (ADR-0018). Você nunca o reescreve direto.
 
 ```bash
-agent-memory checkpoint \
+feat-memory checkpoint \
   --summary "uma frase: o que esta sessão entregou" \
   --next "uma frase: próxima ação concreta" \
   --features F-NNNN[,F-NNNN] \
@@ -56,21 +56,21 @@ agent-memory checkpoint \
 - **Flags omitidas herdam do checkpoint anterior.** `--blocked-on` só se houver bloqueio externo real.
 - **Não escreva corpo.** Frontmatter é o contrato. Corpo livre só para nota genuinamente auxiliar (link externo, contexto que não cabe no diff).
 
-Projetos pré-v0.6 sem `checkpoints/`: `agent-memory migrate --to=checkpoints` uma vez (idempotente). Se STATE.md ficou inconsistente por edição manual, `agent-memory state-rebuild` regenera sem criar novo checkpoint.
+Projetos pré-v0.6 sem `checkpoints/`: `feat-memory migrate --to=checkpoints` uma vez (idempotente). Se STATE.md ficou inconsistente por edição manual, `feat-memory state-rebuild` regenera sem criar novo checkpoint.
 
 ### 4. Decida sobre ADR
 
 Critério: se um contribuidor lendo o commit em 6 meses precisaria de explicação para entender a escolha, é ADR. Se cabe na mensagem do commit, não é. Nunca para refactor mecânico, rename, ou fix óbvio.
 
-`agent-memory propose-adr --staged` gera draft em `.agent-memory/decisions/proposals/`. Preencha em três seções curtas (formato em "ADR mínimo" abaixo). Mova para `decisions/` só após revisão humana; atualize `affects_features`.
+`feat-memory propose-adr --staged` gera draft em `.feat-memory/decisions/proposals/`. Preencha em três seções curtas (formato em "ADR mínimo" abaixo). Mova para `decisions/` só após revisão humana; atualize `affects_features`.
 
-**Superseding um ADR existente.** Quando esta sessão marca um ADR com `status: superseded` (e adiciona `superseded_by` apontando para o novo), mova o arquivo para `.agent-memory/decisions/superseded/` via `git mv` (ADR-0023, F-0019). IDs continuam resolvíveis pelo crosscheck e citáveis por `superseded_by` em ADRs novos; o move desonera o INDEX principal. Sem subcomando — operação manual.
+**Superseding um ADR existente.** Quando esta sessão marca um ADR com `status: superseded` (e adiciona `superseded_by` apontando para o novo), mova o arquivo para `.feat-memory/decisions/superseded/` via `git mv` (ADR-0023, F-0019). IDs continuam resolvíveis pelo crosscheck e citáveis por `superseded_by` em ADRs novos; o move desonera o INDEX principal. Sem subcomando — operação manual.
 
 ### 5. Valide
 
-`agent-memory audit --strict --no-index`. Drift = caminho em `contracts` virou inválido ou arquivo removido sem deprecar a feature.
+`feat-memory audit --strict --no-index`. Drift = caminho em `contracts` virou inválido ou arquivo removido sem deprecar a feature.
 
-Em branch destinada a merge em `main`: `agent-memory audit --check-collisions origin/main`. Em colisão de ID, renumere o local (renomear arquivo + atualizar `id` no frontmatter + referências cruzadas). ADRs já mesclados na destino nunca renumeram.
+Em branch destinada a merge em `main`: `feat-memory audit --check-collisions origin/main`. Em colisão de ID, renumere o local (renomear arquivo + atualizar `id` no frontmatter + referências cruzadas). ADRs já mesclados na destino nunca renumeram.
 
 ### 6. Apresente o resumo
 
@@ -79,7 +79,7 @@ Antes de commitar: features atualizadas (IDs), `Current`/`Next` do STATE, status
 ### 7. Telemetria
 
 ```bash
-agent-memory record debrief_run features=F-NNNN[,F-NNNN]
+feat-memory record debrief_run features=F-NNNN[,F-NNNN]
 ```
 
 Local-only, falha não bloqueia (F-0014, ADR-0017).
@@ -108,6 +108,17 @@ decisions: [ADR-NNNN]
 Sem corpo, a menos que registre algo que a frontmatter não comporta (trade-off não óbvio, link a issue externa). **Não duplique `user_value` numa seção "Comportamento" no body.**
 
 Mantenha ≤ 4 critérios. Se está escrevendo `response: >` com 3 linhas YAML, ou condense para 1 linha, ou quebre em dois critérios menores. Se precisa enumerar todo caso de erro, está auditando — não documentando recall.
+
+### Teste de uma capacidade (aplique ANTES de gravar qualquer feature)
+
+O Manifest é por **capacidade**, não por lote de release. Antes de escrever uma feature, passe-a por estes quatro filtros — se falhar em qualquer um, **divida em features reais ou deixe de fora**:
+
+1. **Uma frase, sem "e"/";" juntando assuntos.** Consegue dizer o `user_value` numa frase sem emendar coisas distintas? Se enumera ("faz X; também Y; e Z"), são várias features.
+2. **Critérios coesos.** Todos os `acceptance` testam **a mesma** capacidade de ângulos diferentes? Se A1 e A2 falam de assuntos sem relação, você empacotou um changelog.
+3. **Nome = substantivo de capacidade.** O `name` diz *o que o sistema faz* (`schema-reference`, `cli-path-uniformity`), não uma palavra de processo (`polish`, `misc`, `various`, `fixes`, `updates`). O audit **bloqueia** nomes-balde (ADR-0035) — mas ele só pega o tell óbvio; a coesão dos itens 1–2 é seu julgamento.
+4. **É capacidade ou faxina?** Bugfix, refactor mecânico, fix cosmético, remoção de dead-code **não viram feature** — vão pro git history (e ADR se for decisão). Agrupar várias faxinas numa "feature guarda-chuva" é o anti-padrão que gerou o changelog-disfarçado-de-feature.
+
+Cobertura honesta > cobertura inflada: é melhor uma faxina ficar só no git do que virar uma entrada de Manifest que mente sobre ser capacidade.
 
 **EARS — patterns e campos obrigatórios:**
 
@@ -154,6 +165,7 @@ O que decidiu e o porquê dominante. Embuta trade-offs aqui ("aceitamos custo X 
 ## O que evitar
 
 - **Inventar features** para preencher Manifest. Sem capacidade nomeável, sem entrada.
+- **Feature guarda-chuva / changelog.** Empacotar várias mudanças de um lote (fixes + cleanup + cosmético) numa só feature. Passe pelo "Teste de uma capacidade" — divida ou deixe no git.
 - **Inventar métricas.** Sem medição desta sessão, mantenha valor anterior ou remova o campo.
 - **Corpo de checkpoint.** Frontmatter > prosa duplicada.
 - **Duplicar frontmatter no body** de feature ou ADR.

@@ -1,19 +1,19 @@
 ---
 name: memory-deploy
-description: Use quando o usuário pede para instalar a metodologia em um projeto (frases como "instale a metodologia", "configure o agent-memory", "rode o setup", "este projeto não tem AGENTS.md", "ajude a adotar esta estrutura"). Conduz a adoção: detecta greenfield versus legacy, executa `agent-memory deploy` (que cuida sozinho do bloco com sentinelas no AGENTS.md), e em projetos legacy faz gênese retroativa por engenharia reversa multi-fonte (code-first): triangula testes, telas, documentação, código e dependências para extrair capacidades e decisões, com o git log como fonte secundária para datar/justificar. Não escreve em AGENTS.md fora do bloco delimitado pelas sentinelas.
+description: Use quando o usuário pede para instalar a metodologia em um projeto (frases como "instale a metodologia", "configure o feat-memory", "rode o setup", "este projeto não tem AGENTS.md", "ajude a adotar esta estrutura"). Conduz a adoção: detecta greenfield versus legacy, executa `feat-memory deploy` (que cuida sozinho do bloco com sentinelas no AGENTS.md), e em projetos legacy faz gênese retroativa por engenharia reversa multi-fonte (code-first): triangula testes, telas, documentação, código e dependências para extrair capacidades e decisões, com o git log como fonte secundária para datar/justificar. Propõe o frontmatter da AGENTS.md (project, stack, constraints) a partir de evidência observável e apresenta ao mantenedor para aprovação — nunca grava esses valores sem aval humano.
 ---
 
 # Memory deploy
 
 Esta skill é o ponto de entrada único para instalar a metodologia em qualquer projeto. Conduz três etapas: detecção do estado do projeto, deploy mecânico via CLI, e (apenas em projetos legacy) gênese retroativa de ADRs e do Manifest.
 
-A skill **não escreve no corpo da `AGENTS.md`** fora do bloco delimitado pelas sentinelas markdown. O bloco em si é gerenciado pelo `agent-memory deploy` (refrescado a cada execução). Identidade, restrições não-negociáveis, convenções de código e qualquer outra seção específica do projeto são autoria do mantenedor humano, registradas em sessão posterior se ele decidir que vale.
+A skill **propõe** o frontmatter da `AGENTS.md` (project, stack, constraints) a partir de evidência observável do projeto e **apresenta ao mantenedor para aprovação** antes de gravar — nunca cristaliza esses valores sem aval humano. Esse é o gate: propor é encorajado, gravar sem aprovação é proibido. O bloco de metodologia entre sentinelas markdown é gerenciado pelo `feat-memory deploy` (refrescado a cada execução) e não se confunde com o frontmatter. Seções em prosa específicas do projeto (Identidade, Convenções) seguem sendo autoria do mantenedor, registradas quando ele achar útil.
 
 ## Quando usar
 
-A skill aplica-se em duas situações. A primeira é quando o usuário pede para instalar a metodologia pela primeira vez, com frases como "instale a metodologia neste projeto", "configure o agent-memory aqui", "rode o setup". A segunda é quando o usuário pede para adotar a metodologia em um projeto legado, com frases como "este projeto não tem AGENTS.md" ou "preciso popular o Manifest a partir do código existente".
+A skill aplica-se em duas situações. A primeira é quando o usuário pede para instalar a metodologia pela primeira vez, com frases como "instale a metodologia neste projeto", "configure o feat-memory aqui", "rode o setup". A segunda é quando o usuário pede para adotar a metodologia em um projeto legado, com frases como "este projeto não tem AGENTS.md" ou "preciso popular o Manifest a partir do código existente".
 
-A skill não se aplica quando os artefatos da metodologia já estão totalmente populados. Nesse caso use `memory-bootstrap` para retomar trabalho. Também não se aplica quando o usuário quer apenas rodar o deploy mecânico em CI ou automação; nesse caso, `agent-memory deploy <projeto> --no-merge` deve ser invocado diretamente sem mediação de skill.
+A skill não se aplica quando os artefatos da metodologia já estão totalmente populados. Nesse caso use `memory-bootstrap` para retomar trabalho. Também não se aplica quando o usuário quer apenas rodar o deploy mecânico em CI ou automação; nesse caso, `feat-memory deploy <projeto> --no-merge` deve ser invocado diretamente sem mediação de skill.
 
 ## Procedimento
 
@@ -33,13 +33,13 @@ Apresente sua classificação e peça confirmação antes de prosseguir. Algo co
 
 ### Etapa 2: executar o deploy mecânico
 
-Em ambos os cenários (greenfield e legacy), rode `agent-memory deploy <projeto>` para estabelecer a estrutura física, onde `<projeto>` é o caminho absoluto da raiz do projeto consumidor. O comando:
+Em ambos os cenários (greenfield e legacy), rode `feat-memory deploy <projeto>` para estabelecer a estrutura física, onde `<projeto>` é o caminho absoluto da raiz do projeto consumidor. O comando:
 
 - Cria `AGENTS.md` com frontmatter scaffold + bloco com sentinelas, ou — se já existe — anexa o bloco preservando todo o resto do conteúdo do usuário. Em re-deploys, o bloco é refrescado de forma idempotente.
 - Cria `CLAUDE.md` (redirect mínimo `@AGENTS.md`) se ausente; deixa quieto se existe.
-- Cria `.agent-memory/STATE.md` se ausente.
+- Cria `.feat-memory/STATE.md` se ausente.
 - Copia as skills para `skills/` (sempre sobrescritas; conteúdo de metodologia).
-- Cria pastas `.agent-memory/manifest/features/` e `.agent-memory/decisions/proposals/`.
+- Cria pastas `.feat-memory/manifest/features/` e `.feat-memory/decisions/proposals/`.
 - Instala o pre-commit hook se for repositório Git.
 - Refresca os blocos de `.gitattributes` e `.gitignore`.
 
@@ -47,15 +47,25 @@ Não use `--force` aqui. O `--force` reescreve `AGENTS.md` inteira a partir do t
 
 Se o deploy reportar erros, pare e investigue. Geralmente são problemas de permissão ou Python ausente.
 
-A partir deste ponto a skill não escreve mais em `AGENTS.md`. Em greenfield, o trabalho da skill termina aqui — sugira commitar o estado inicial. Em legacy, prossiga para a Etapa 3.
+Após o deploy estabelecer a estrutura, prossiga para a Etapa 2.1 (propor o frontmatter). Em greenfield, esse é o trabalho final da skill — sugira commitar após a aprovação. Em legacy, faça também a Etapa 3 (gênese de Manifest e ADRs).
+
+### Etapa 2.1: propor o frontmatter para aprovação
+
+O deploy deixou o frontmatter como esqueleto (legacy sem frontmatter) ou template (greenfield), com `project`/`stack`/`constraints` por preencher. Proponha valores a partir de evidência e **apresente ao mantenedor para aprovação — não grave sem aval**. Use `feat-memory schema` para a forma exata de cada campo.
+
+- **project**: o nome do projeto. Fato observável (nome do diretório/repositório) — proponha direto.
+- **stack**: detectável dos manifestos (`package.json`, `pyproject.toml`, `go.mod`, …) e da estrutura. Proponha `language`, `architecture` e as deps de runtime relevantes que você observa.
+- **constraints**: rascunhe a partir de evidência mecânica — regras impostas por tooling (configs de lint/formatter), gates de CI (suíte obrigatória, build), dependências fixadas/evitadas, e lições/avisos já escritos em prosa na AGENTS.md. Para cada uma, proponha `id`, `severity` (`hard`|`soft`) e `rule`; marque-as explicitamente como **rascunho**.
+
+Apresente o frontmatter proposto inteiro para o mantenedor revisar, editar e aprovar. Gravar valores não-aprovados como se fossem decisão oficial é tão grave quanto cristalizar um ADR sem revisão. Após a aprovação, grave no frontmatter e rode `feat-memory audit` para confirmar conformidade.
 
 ### Etapa 3 (apenas legacy): gênese retroativa de ADRs e Manifest
 
-Esta etapa só executa em projetos legacy. Ela popula `.agent-memory/decisions/` e `.agent-memory/manifest/features/` a partir do que já existe no repositório, mas **não toca em `AGENTS.md`**. Identidade, restrições e convenções específicas do projeto continuam sendo responsabilidade do mantenedor humano, em sessão posterior.
+Esta etapa só executa em projetos legacy. Ela popula `.feat-memory/decisions/` e `.feat-memory/manifest/features/` a partir do que já existe no repositório. (O frontmatter da AGENTS.md já foi proposto na Etapa 2.1; aqui o foco é Manifest e ADRs.)
 
 A gênese é **engenharia reversa multi-fonte, code-first** (ADR-0030, ADR-0031). Seu objetivo é reconstruir o *propósito* do sistema — o que ele faz para o usuário e por que foi construído assim — com **alta precisão e baixa alucinação**. Nenhuma fonte sozinha basta: o código é a verdade do *comportamento* mas exige inferência de *intenção*; os testes descrevem a intenção de forma executável; as telas mostram as capacidades como o usuário as vê; o git conta o *porquê/quando* mas é pobre em repos squashados. A precisão vem de **triangular** essas fontes, não de confiar em uma.
 
-Rode `agent-memory migrate` uma vez para colher pistas — ele aponta testes, telas, entrypoints, stack e commits com cara de decisão, agnóstico de linguagem. Trate a saída como "por onde começar a ler", nunca como a resposta.
+Rode `feat-memory migrate` uma vez para colher pistas — ele aponta testes, telas, entrypoints, stack e commits com cara de decisão, agnóstico de linguagem. Trate a saída como "por onde começar a ler", nunca como a resposta.
 
 #### As fontes de evidência, da mais precisa à menos (para inferir propósito)
 
@@ -86,17 +96,21 @@ Para cada capacidade, proponha uma feature com ID monotônico, `status: shipped`
 
 Não inclua `metrics` na gênese inicial — métricas só aparecem quando há medições reais. Apresente as features em lotes pequenos (cinco por vez no máximo). Lotes grandes desencorajam revisão crítica.
 
+Mantenha cada arquivo de feature **enxuto**: uma capacidade, `user_value` em uma frase, `contracts`/`acceptance` só o essencial. Não há limite mecânico de tamanho — um arquivo inchado sinaliza feature mal-escopada (provavelmente duas), não rico. Rode `feat-memory schema` para o vocabulário exato de campos (obrigatórios, opcionais, patterns EARS).
+
+Aplique a cada feature o **"Teste de uma capacidade"** (detalhado na skill `memory-debrief`): user_value numa frase sem emendar assuntos; `acceptance` coesos; nome = substantivo de capacidade (o audit bloqueia nomes-balde, ADR-0035); bugfix/cleanup não vira feature. Nunca agrupe várias capacidades num arquivo "guarda-chuva".
+
 #### Fase 3.3: ADRs a partir das decisões
 
 Para cada decisão identificada (dependências, estrutura, camadas, cortes de escopo, convenções impostas por tooling), redija um ADR no formato padrão com as quatro seções (Contexto, Decisão, Consequências, Alternativas rejeitadas). Use o **git como fonte secundária** aqui: `git show <sha>` dos candidatos do `migrate`, PRs e o CHANGELOG ajudam a datar a decisão e recuperar a justificativa original; quando o histórico não cobre (squash), data com a melhor evidência (lockfile, CHANGELOG) e descreve o contexto a partir do código. Marque `status: accepted` porque a decisão já está em produção. Filtre decisão arquitetural de verdade versus refactor mecânico ou correção de bug.
 
-Apresente cada ADR proposto individualmente para revisão humana. Não gere uma fila sem aprovação intermediária — o cansaço do revisor é o inimigo. Ao aprovar, escreva diretamente em `.agent-memory/decisions/NNNN-slug.md` (não em `proposals/`, porque são reconstruções de decisões já tomadas, não propostas novas).
+Apresente cada ADR proposto individualmente para revisão humana. Não gere uma fila sem aprovação intermediária — o cansaço do revisor é o inimigo. Ao aprovar, escreva diretamente em `.feat-memory/decisions/NNNN-slug.md` (não em `proposals/`, porque são reconstruções de decisões já tomadas, não propostas novas).
 
-#### Fase 3.4: `.agent-memory/STATE.md` inicial e auditoria
+#### Fase 3.4: `.feat-memory/STATE.md` inicial e auditoria
 
-Reescreva `.agent-memory/STATE.md` com `Current` registrando algo como "Memória inicial estabelecida via gênese retroativa. Última feature mapeada: F-NNNN." Em `Next`, escreva uma frase neutra do tipo "Aguardando definição do próximo foco pelo usuário." — não pergunte ao usuário e não invente um foco; ele rescreve quando começar a trabalhar. Em `Recent`, adicione uma linha sobre a gênese com timestamp atual. Deixe `active_features` vazio ou apenas com features em foco no momento.
+Reescreva `.feat-memory/STATE.md` com `Current` registrando algo como "Memória inicial estabelecida via gênese retroativa. Última feature mapeada: F-NNNN." Em `Next`, escreva uma frase neutra do tipo "Aguardando definição do próximo foco pelo usuário." — não pergunte ao usuário e não invente um foco; ele rescreve quando começar a trabalhar. Em `Recent`, adicione uma linha sobre a gênese com timestamp atual. Deixe `active_features` vazio ou apenas com features em foco no momento.
 
-Rode `agent-memory audit` para validar a estrutura completa e sugira o commit inicial.
+Rode `feat-memory audit` para validar a estrutura completa e sugira o commit inicial.
 
 ## Princípios fundamentais
 
@@ -106,11 +120,11 @@ Lote pequeno, revisão crítica. Lotes grandes saturam a atenção do revisor e 
 
 Quando em dúvida, não escreva. Em gênese, isso significa deixar uma feature ou ADR fora da gênese inicial em vez de escrevê-la imprecisa.
 
-A skill nunca escreve no corpo da `AGENTS.md` fora do bloco com sentinelas. Mesmo que o usuário peça explicitamente "preencha a identidade" durante a adoção, recuse: identidade do projeto é autoria humana e o usuário pode escrever no próximo turno fora desta skill.
+Autoria do frontmatter: propor a partir de evidência, aprovar com o humano. A skill propõe `project`/`stack`/`constraints` a partir do que observa (nome do projeto, manifestos, tooling, deps, lições já escritas) e apresenta para aprovação; nunca grava esses valores sem o aval do mantenedor. Constraints inferidas são explicitamente rascunho. O gate é aprovação humana, não proibição de propor — cristalizar valores não-aprovados é tão ruim quanto cristalizar um ADR sem revisão (ADR-0032). A prosa de identidade/convenções fora do frontmatter segue sendo autoria do mantenedor.
 
 ## O que evitar
 
-Não rode `agent-memory deploy --force` automaticamente. O `--force` reescreve `AGENTS.md` do template, perdendo conteúdo do usuário fora do bloco com sentinelas. É escolha consciente do operador, e a skill deve respeitar essa escolha apenas quando o usuário pede explicitamente.
+Não rode `feat-memory deploy --force` automaticamente. O `--force` reescreve `AGENTS.md` do template, perdendo conteúdo do usuário fora do bloco com sentinelas. É escolha consciente do operador, e a skill deve respeitar essa escolha apenas quando o usuário pede explicitamente.
 
 Não tente cobrir cem por cento das decisões históricas ou dos entrypoints na primeira gênese. Capture o que é claro e importante; o resto entra incrementalmente conforme o trabalho normal toca essas áreas. Cobertura parcial honesta é melhor que cobertura total inventada.
 
@@ -118,4 +132,4 @@ Não invente `metrics` ou medições estimadas. Se não há valor real medido, o
 
 Não inclua features para detalhes de implementação puramente internos. A unidade do Manifest é capacidade nomeável com `user_value` em uma frase.
 
-Não confunda os dois fluxos de criação de ADR. Na gênese retroativa, ADRs vão diretamente para `.agent-memory/decisions/` porque são reconstruções históricas. Em uso normal (skill `memory-debrief`), ADRs novos vão para `.agent-memory/decisions/proposals/` primeiro.
+Não confunda os dois fluxos de criação de ADR. Na gênese retroativa, ADRs vão diretamente para `.feat-memory/decisions/` porque são reconstruções históricas. Em uso normal (skill `memory-debrief`), ADRs novos vão para `.feat-memory/decisions/proposals/` primeiro.
