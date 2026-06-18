@@ -1,25 +1,25 @@
 ---
 schema_version: 2
-updated_at: 2026-06-03T00:00:00Z
-updated_by: claude-opus-4.8
+updated_at: '2026-06-10T06:06:20+00:00'
+updated_by: claude-fable-5
 active_features: []
-active_decisions: []
+active_decisions:
+- ADR-0010
+- ADR-0011
+- ADR-0012
 blocked_on: null
 ---
 
+# Estado
+
 ## Current
 
-Memória inicial estabelecida via gênese retroativa (engenharia reversa
-multi-fonte). Manifest com 19 features `shipped` (F-0001…F-0019) e 9 ADRs
-`accepted` (ADR-0001…ADR-0009) reconstruídos a partir de testes, README e
-código. Auditoria limpa: schema 1.00, cobertura 100%, 0 drift.
+Exploração de design do motor físico via playground interativo (24 cenários); decididos: repulsão só corpos/atração só atratores, zona de força linear zona×zona, arestas por tendência de força (ADR-0010..0012)
 
 ## Next
 
-Aguardando definição do próximo foco pelo usuário.
+Reescrever a Fase 4 do plano de rearquitetura sob ADR-0010..0012 e implementar o modelo no motor src/physics/
 
 ## Recent
 
-| ts | agent | features touched | summary |
-|---|---|---|---|
-| 2026-06-03 | claude-opus-4.8 | F-0001…F-0019 | Adoção do agent-memory + gênese retroativa do Manifest e ADRs (ADR-0001) |
+_(sem checkpoints anteriores)_

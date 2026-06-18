@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tensegrams — Physics Sandbox</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1b212b; --line:#2a313c;
+    --fg:#d6deeb; --mut:#8a97a8; --acc:#5ccfe6; --acc2:#ffcb6b; --bad:#ff6b6b; --ok:#9ece6a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:13px}
+  #app{display:grid;grid-template-columns:260px 1fr;height:100vh}
+  #app.nosidebar{grid-template-columns:0 1fr} /* menu de experimentos recolhido */
+  /* sidebar */
+  #sidebar{background:var(--panel);border-right:1px solid var(--line);overflow:hidden auto}
+  #app.nosidebar #sidebar{border-right:none}
+  #sidebar h1{font-size:13px;letter-spacing:.04em;margin:0;padding:14px 14px 6px;color:var(--acc)}
+  #sidebar .sub{padding:0 14px 10px;color:var(--mut);font-size:11px;border-bottom:1px solid var(--line)}
+  .grp{padding:10px 14px 2px;color:var(--acc2);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+  .item{padding:6px 14px;cursor:pointer;color:var(--fg);border-left:3px solid transparent;line-height:1.25}
+  .item small{display:block;color:var(--mut);font-size:10.5px}
+  .item:hover{background:var(--panel2)}
+  .item.active{background:var(--panel2);border-left-color:var(--acc)}
+  .badge{display:inline-block;font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+    border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+  .badge.decisivo{background:#3d2733;color:#ff8fa3;border:1px solid #6e3a4d}
+  .badge.aberto{background:#2c3a2b;color:#9ece6a;border:1px solid #46603f}
+  .badge.decidido{background:#26313e;color:#7a8aa0;border:1px solid #3a4a5e}
+  .badge.adotado{background:#1f3a33;color:#5ccfa0;border:1px solid #2f5d4e}
+  .badge.rejeitado{background:#3a2426;color:#ff6b6b;border:1px solid #5d3134}
+  #notes{width:100%;min-height:60px;background:var(--panel2);color:var(--fg);
+    border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;
+    font-family:inherit;resize:vertical}
+  /* main */
+  main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  header.sc{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+  header.sc .hbody{min-width:0}
+  header.sc h2{margin:0 0 4px;font-size:15px}
+  header.sc p{margin:0;color:var(--mut);max-width:80ch;line-height:1.45}
+  /* botões de recolher/expandir os frames auxiliares (menu e parâmetros) */
+  .framebtn{flex:0 0 auto;background:var(--panel2);color:var(--mut);border:1px solid var(--line);
+    border-radius:5px;padding:4px 8px;font-size:13px;line-height:1;cursor:pointer}
+  .framebtn:hover{color:var(--acc);border-color:var(--acc)}
+  #controlsReopen{flex:0 0 auto;display:none;justify-content:center;
+    background:var(--panel);border-top:1px solid var(--line);padding:5px}
+  #app.nocontrols #controlsReopen{display:flex}
+  #app.nocontrols #controls,#app.nocontrols #splitter{display:none} /* parâmetros recolhidos */
+  .tabbar .collapsebtn{margin-left:auto;align-self:center;color:var(--mut);
+    background:none;border:none;font-size:14px;padding:4px 8px;cursor:pointer}
+  .tabbar .collapsebtn:hover{color:var(--acc)}
+  #stage{position:relative;flex:1;min-height:0;background:
+    radial-gradient(circle at 50% 50%, #131922 0%, #0c0f14 100%)}
+  canvas{display:block;position:absolute;inset:0}
+  #hud{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:11px;
+    color:var(--mut);background:rgba(0,0,0,.45);padding:6px 9px;border-radius:6px;
+    border:1px solid var(--line);white-space:pre;pointer-events:none}
+  #hint{position:absolute;bottom:10px;left:10px;font-size:11px;color:var(--mut);
+    background:rgba(0,0,0,.4);padding:5px 9px;border-radius:6px;pointer-events:none}
+  /* toggles de visibilidade dos painéis sobrepostos ao canvas */
+  #stagetoggles{position:absolute;bottom:10px;right:10px;display:flex;gap:5px;z-index:2}
+  #stagetoggles button{font-size:10.5px;padding:3px 8px;border-radius:5px;
+    background:rgba(0,0,0,.45);color:var(--mut);border:1px solid var(--line);line-height:1.2}
+  #stagetoggles button:hover{color:var(--fg);border-color:var(--acc)}
+  #stagetoggles button.on{color:var(--acc);border-color:var(--acc);background:rgba(92,207,230,.12)}
+  /* splitter (redimensiona o painel de controles) */
+  #splitter{height:7px;flex:0 0 auto;background:var(--line);cursor:ns-resize}
+  #splitter:hover{background:var(--acc)}
+  /* controls */
+  #controls{flex:0 0 auto;height:210px;background:var(--panel);
+    display:flex;flex-direction:column;overflow:hidden}
+  .tabbar{display:flex;gap:2px;padding:0 8px;border-bottom:1px solid var(--line);flex:0 0 auto}
+  .tabbar button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;
+    padding:8px 13px;color:var(--mut);font-size:12px}
+  .tabbar button:hover{color:var(--fg)}
+  .tabbar button.active{color:var(--acc);border-bottom-color:var(--acc)}
+  .tabpane{flex:1;overflow-y:auto;padding:10px 16px}
+  .row{display:grid;grid-template-columns:160px 1fr 56px;gap:10px;align-items:center;margin-bottom:7px}
+  .row label{color:var(--mut)}
+  .row input[type=range]{width:100%}
+  .row .val{font-family:var(--mono);color:var(--acc);text-align:right;font-size:11px}
+  .row select,.row input[type=text]{background:var(--panel2);color:var(--fg);
+    border:1px solid var(--line);border-radius:5px;padding:3px 6px;font-size:12px}
+  .toggles{display:flex;flex-wrap:wrap;gap:8px 14px;margin:8px 0 6px}
+  .toggles label{color:var(--mut);display:flex;gap:5px;align-items:center;cursor:pointer}
+  .barrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:6px;padding:5px 11px;cursor:pointer;font-size:12px}
+  button:hover{border-color:var(--acc)}
+  button.primary{border-color:var(--acc);color:var(--acc)}
+  .presets b{color:var(--mut);margin-right:4px;font-weight:500}
+  /* prompt */
+  #promptbox{border-top:1px solid var(--line);background:var(--panel2);padding:10px 16px;
+    display:flex;gap:10px;align-items:flex-start}
+  #prompt{flex:1;margin:0;font-family:var(--mono);font-size:11.5px;color:var(--fg);
+    white-space:pre-wrap;line-height:1.4;max-height:120px;overflow:auto}
+  #copy{white-space:nowrap}
+  .sec{color:var(--acc2);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin:10px 0 4px}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>TENSEGRAMS · PHYSICS SANDBOX</h1>
+    <div class="sub">Explorador interativo das decisões de modelo físico. Arraste os corpos/alças para gerar forças.</div>
+    <div id="menu"></div>
+  </aside>
+  <main>
+    <header class="sc">
+      <button id="toggleSidebar" class="framebtn" title="recolher/expandir o menu de experimentos">☰</button>
+      <div class="hbody"><h2 id="scTitle"></h2><p id="scDesc"></p></div>
+    </header>
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="hud"></div>
+      <div id="hint">arraste corpos para empurrar · arraste alças ◆ para mover atratores · botão Reset reinicia</div>
+      <div id="stagetoggles">
+        <button data-panel="hud" title="esconder/mostrar HUD de métricas">HUD</button>
+        <button data-panel="spark" title="esconder/mostrar gráficos (sparklines)">gráficos</button>
+        <button data-panel="hint" title="esconder/mostrar dica de uso">dicas</button>
+      </div>
+    </div>
+    <div id="splitter" title="arraste para redimensionar o painel"></div>
+    <div id="controlsReopen"><button class="framebtn" id="reopenControls" title="expandir o painel de parâmetros">▴ parâmetros do live</button></div>
+    <div id="controls"></div>
+    <div id="promptbox">
+      <pre id="prompt"></pre>
+      <button id="copy" class="primary">Copiar</button>
+    </div>
+  </main>
+</div>
+<script>
+"use strict";
+/* ============================================================
+   ENGINE — partículas, integrador, biblioteca de forças/constraints
+   ============================================================ */
+function world(){ return {bodies:[], handles:[], alpha:1, acc:new Map(), step:0,
+  contacts:[], chains:[], attractors:[], stats:{}}; }
+function addBody(w,o){ const b=Object.assign(
+  {x:0,y:0,vx:0,vy:0,fx:0,fy:0,im:1,r:14,cl:null,cw:null,color:'#6cf',fixed:false,role:'body'},o);
+  if(b.hw!=null){ b.rect=true; b.hh=b.hh??b.hw; b.r=Math.max(b.hw,b.hh); } // rect: hw/hh = meia-extensão (r vira raio de picking)
+  b.r0=b.r; w.bodies.push(b); return b; } // r0 = raio base (a SDF é escalada a partir dele)
+/* PRNG com seed (mulberry32) — Chacoalhar e cenários aleatórios ficam reprodutíveis */
+let _seed=1; function srand(s){ _seed=s>>>0||1; }
+function rng(){ _seed|=0; _seed=_seed+0x6D2B79F5|0; let t=Math.imul(_seed^_seed>>>15,1|_seed);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }
+/* SDF de retângulo: distância do ponto à borda (negativa dentro) + direção de empurrão */
+function rectSDF(px,py,b){ const dx=px-b.x, dy=py-b.y, qx=Math.abs(dx)-b.hw, qy=Math.abs(dy)-b.hh;
+  const ox=Math.max(qx,0), oy=Math.max(qy,0), outer=Math.hypot(ox,oy), inner=Math.min(Math.max(qx,qy),0);
+  let nx,ny; if(outer>1e-9){ nx=ox*Math.sign(dx)/outer; ny=oy*Math.sign(dy)/outer; }
+  else if(qx>qy){ nx=Math.sign(dx)||1; ny=0; } else { nx=0; ny=Math.sign(dy)||1; }
+  return {d:outer+inner, nx, ny}; }
+function clearF(w){ for(const b of w.bodies){b.fx=0;b.fy=0; if(b._f)b._f.length=0;} }
+const FKIND={central:'#ffe14d',attract:'#76ff03',repel:'#18ffff',chain:'#ff4081',mid:'#b388ff',seg:'#ffab40',fric:'#ff80ab',drag:'#b0bec5',bend:'#f78c6c'};
+// acumula a força no corpo E (quando o debug "forças individuais" está ligado) grava cada parcela por origem
+function addF(b,fx,fy,kind){ b.fx+=fx; b.fy+=fy; if(dbg.forcesEach){ (b._f||(b._f=[])).push({fx,fy,kind}); } }
+function dist(a,b){ return Math.hypot(b.x-a.x,b.y-a.y); }
+function KE(w){ let s=0; for(const b of w.bodies) if(!b.fixed) s+=0.5*(b.vx*b.vx+b.vy*b.vy); return s; }
+
+function integrate(w,o){
+  const dt=o.dt??1, damping=o.damping??0.85, order=o.order??'after', cap=o.cap??1e9;
+  for(const b of w.bodies){
+    if(b.fixed||b.im===0){ b.vx=0; b.vy=0; continue; }
+    const ax=b.fx*b.im, ay=b.fy*b.im;
+    if(order==='before'){ b.vx=b.vx*damping+ax*dt; b.vy=b.vy*damping+ay*dt; }
+    else { b.vx=(b.vx+ax*dt)*damping; b.vy=(b.vy+ay*dt)*damping; }
+    if(b.vx>cap)b.vx=cap; else if(b.vx<-cap)b.vx=-cap;
+    if(b.vy>cap)b.vy=cap; else if(b.vy<-cap)b.vy=-cap;
+    b.x+=b.vx*dt; b.y+=b.vy*dt;
+    if(!isFinite(b.x)||!isFinite(b.y)){ b.x=Math.max(-4000,Math.min(4000,b.x||0)); b.y=Math.max(-4000,Math.min(4000,b.y||0)); }
+  }
+}
+/* layer gate — interseção SIMÉTRICA de tags, como o produto (src/physics/collision.js::layersIntersect).
+   Sem camadas declaradas em NENHUM dos dois => colidem por padrão (conveniência didática do sandbox). */
+function inter(a,b){ if(!a||!b)return false; for(const x of a) if(b.has(x)) return true; return false; }
+function collide(a,b){
+  if(!a.cl&&!b.cl) return true;
+  return inter(a.cl,b.cl);
+}
+/* repulsão círculo-círculo por perfil; one-sided; PI opcional. Registra contatos p/ debug. */
+function repel(w,o){
+  const profile=o.profile??'linear', k=o.k??0.4, uniPad=(o.pad??0)+view.pad, n=o.n??2, K=o.K??1,
+    ki=o.ki??0, fmax=o.fmax??80, accMax=o.accMax??400, zoneModel=o.zoneModel??'zone'; // DECISÃO: repulsão sempre zona×zona (soma os pads dos dois corpos)
+  w.step++;
+  const N=w.bodies.length;
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+    const a=w.bodies[i],b=w.bodies[j];
+    if(!collide(a,b))continue;
+    const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9;
+    const padA=a.pad??uniPad, padB=b.pad??uniPad;            // zona por-elemento (cada corpo pode ter a sua)
+    const extra=zoneModel==='zone'?(padA+padB):Math.max(padA,padB);
+    const pk=i*100003+j;
+    if(a.rect||b.rect){ // AABB×AABB: penetração por eixo, resolve no MENOR (espelha src/physics/collision.js)
+      const ahw=a.rect?a.hw:a.r, ahh=a.rect?a.hh:a.r, bhw=b.rect?b.hw:b.r, bhh=b.rect?b.hh:b.r;
+      const ox=(ahw+bhw+extra)-Math.abs(dx), oy=(ahh+bhh+extra)-Math.abs(dy);
+      if(ox<=0||oy<=0){ w.acc.delete(pk); continue; }
+      const pen=Math.min(ox,oy);
+      let f=0; if(profile==='linear')f=k*pen; else if(profile==='constant')f=k;
+      else { const R0=Math.min(ahw+bhw,ahh+bhh)+extra, u=Math.min(pen/R0,1); f=Math.min(K*k*R0*Math.pow(u,n),fmax); }
+      if(ki>0){ let e=w.acc.get(pk)??0; e=Math.min(e+pen,accMax); w.acc.set(pk,e); f+=ki*e; }
+      if(ox<oy){ const s=dx>=0?1:-1; addF(a,-f*s,0,'repel'); addF(b,f*s,0,'repel'); }
+      else { const s=dy>=0?1:-1; addF(a,0,-f*s,'repel'); addF(b,0,f*s,'repel'); }
+      continue; }
+    const sumR=a.r+b.r, gap=D-sumR;
+    let f=0, active=false;
+    if(profile==='linear'){ const pen=(sumR+extra)-D; if(pen>0){ f=k*pen; active=true; } }
+    else if(profile==='constant'){ if(gap<extra){ f=k; active=true; } }
+    else if(profile==='power'){ const R0=sumR+extra; if(D<R0){ const u=(R0-D)/R0; f=Math.min(K*k*R0*Math.pow(u,n),fmax); active=true; } } // f = K·k·R0·uⁿ; K = ganho do perfil (compensa uⁿ<u em overlap pequeno); n=1,K=1 ≡ linear
+    if(!active){ w.acc.delete(pk); continue; }
+    if(ki>0){ const pen=Math.max((sumR+extra)-D,0); let e=w.acc.get(pk); if(e===undefined){e=0;} e=Math.min(e+pen,accMax); w.acc.set(pk,e); f+=ki*e; }
+    const ux=dx/D,uy=dy/D;
+    addF(a,-ux*f,-uy*f,'repel'); addF(b,ux*f,uy*f,'repel');
+  }
+}
+function central(w,k,alpha){ const g=k*(alpha??1)*view.central; for(const b of w.bodies){ if(b.fixed)continue; addF(b,-g*b.x,-g*b.y,'central'); } }
+function attractPoint(w,idxs,P,c){ for(const i of idxs){ const b=w.bodies[i]; addF(b,c*(P.x-b.x),c*(P.y-b.y),'attract'); } }
+function attractLine(w,idxs,L,c){ // L: {x,y,ang} linha infinita; puxa perpendicular
+  const nx=-Math.sin(L.ang), ny=Math.cos(L.ang);
+  for(const i of idxs){ const b=w.bodies[i]; const d=(b.x-L.x)*nx+(b.y-L.y)*ny; addF(b,-c*d*nx,-c*d*ny,'attract'); }
+}
+function attractRegion(w,idxs,box,c){ for(const i of idxs){ const b=w.bodies[i];
+  const cx=Math.max(box.x0,Math.min(box.x1,b.x)), cy=Math.max(box.y0,Math.min(box.y1,b.y));
+  addF(b,c*(cx-b.x),c*(cy-b.y),'attract'); } }
+function pairAttractAll(w,idxs,c,cut){ for(let m=0;m<idxs.length;m++)for(let n=m+1;n<idxs.length;n++){
+  const a=w.bodies[idxs[m]],b=w.bodies[idxs[n]]; const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9;
+  if(cut&&D>cut)continue; const ux=dx/D,uy=dy/D; addF(a,ux*c,uy*c,'attract'); addF(b,-ux*c,-uy*c,'attract'); } }
+function chainSpring(w,chain,k,rest){ for(let m=0;m+1<chain.length;m++){
+  const a=w.bodies[chain[m]],b=w.bodies[chain[m+1]]; const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9;
+  const f=k*(D-rest), ux=dx/D,uy=dy/D; addF(a,ux*f,uy*f,'chain'); addF(b,-ux*f,-uy*f,'chain'); } }
+function midline(w,chain,k){ const a=w.bodies[chain[0]], b=w.bodies[chain[chain.length-1]];
+  for(let m=1;m<chain.length-1;m++){ const t=m/(chain.length-1); const mx=a.x+(b.x-a.x)*t, my=a.y+(b.y-a.y)*t;
+    const c=w.bodies[chain[m]]; addF(c,k*(mx-c.x),k*(my-c.y),'mid'); } }
+/* segmento (cápsula) vs corpos-obstáculo: repele os corners do segmento que penetra um nó */
+function segVsBodies(w,chain,obstacles,k,thick){
+  for(let m=0;m+1<chain.length;m++){
+    const p=w.bodies[chain[m]], q=w.bodies[chain[m+1]];
+    for(const o of obstacles){
+      // ponto mais próximo do centro do obstáculo no segmento
+      const vx=q.x-p.x, vy=q.y-p.y, L2=vx*vx+vy*vy||1e-9;
+      let t=((o.x-p.x)*vx+(o.y-p.y)*vy)/L2; t=Math.max(0,Math.min(1,t));
+      const cx=p.x+vx*t, cy=p.y+vy*t;
+      let pen,ux,uy;
+      if(o.rect){ const s=rectSDF(cx,cy,o); pen=(thick+view.pad)-s.d; ux=s.nx; uy=s.ny; }
+      else { const dx=cx-o.x, dy=cy-o.y, D=Math.hypot(dx,dy)||1e-9; pen=(o.r+thick+view.pad)-D; ux=dx/D; uy=dy/D; }
+      if(pen>0){ const f=k*pen;
+        // distribui aos dois corners (peso por proximidade)
+        addF(p,ux*f*(1-t),uy*f*(1-t),'seg'); addF(q,ux*f*t,uy*f*t,'seg');
+      }
+    }
+  }
+}
+/* interseção exata de dois segmentos (contagem de cruzamentos nas métricas) */
+function segsCross(p,q,r,s){ const d1x=q.x-p.x,d1y=q.y-p.y,d2x=s.x-r.x,d2y=s.y-r.y;
+  const den=d1x*d2y-d1y*d2x; if(Math.abs(den)<1e-9)return false;
+  const t=((r.x-p.x)*d2y-(r.y-p.y)*d2x)/den, u=((r.x-p.x)*d1y-(r.y-p.y)*d1x)/den;
+  return t>0.001&&t<0.999&&u>0.001&&u<0.999; }
+function countChainCrossings(w,chains){ let n=0;
+  for(let a=0;a<chains.length;a++)for(let b=a+1;b<chains.length;b++)
+    for(let m=0;m+1<chains[a].length;m++)for(let k=0;k+1<chains[b].length;k++)
+      if(segsCross(w.bodies[chains[a][m]],w.bodies[chains[a][m+1]],w.bodies[chains[b][k]],w.bodies[chains[b][k+1]]))n++;
+  return n; }
+/* distância entre dois segmentos (anti-cruzamento de arestas).
+   Exata para segmentos NÃO cruzados (o mínimo sempre envolve um endpoint);
+   se cruzam, d=0 e `crossing` sinaliza para o cenário resolver perpendicular. */
+function segDist(p,q,r,s){
+  if(segsCross(p,q,r,s)){ return {d:0, crossing:true, pa:[p,[p.x,p.y]]}; }
+  function clos(px,py,ax,ay,bx,by){const vx=bx-ax,vy=by-ay,L2=vx*vx+vy*vy||1e-9;
+    let t=((px-ax)*vx+(py-ay)*vy)/L2;t=Math.max(0,Math.min(1,t));return [ax+vx*t,ay+vy*t];}
+  const cands=[ [p, clos(p.x,p.y,r.x,r.y,s.x,s.y)], [q, clos(q.x,q.y,r.x,r.y,s.x,s.y)],
+                [r, clos(r.x,r.y,p.x,p.y,q.x,q.y)], [s, clos(s.x,s.y,p.x,p.y,q.x,q.y)] ];
+  let best=1e9,bp=null;
+  for(const [P,c] of cands){ const d=Math.hypot(P.x-c[0],P.y-c[1]); if(d<best){best=d;bp=[P,c];} }
+  return {d:best, pa:bp};
+}
+/* XPBD distância (1 iteração); projeção = alpha 0.
+   Corrige posição E velocidade (Δv=Δx/dt) — sem isso a carga externa acumula
+   velocidade que a projeção anula só em posição: KE fantasma, settle nunca dispara.
+   `rev` inverte a ordem da varredura: Gauss-Seidel SIMÉTRICO (alternar fwd/rev por
+   iteração) cancela o viés de ordem que, num anel, injeta deslocamento tangencial
+   de quiralidade fixa → rotação uniforme que o damping não vence. Achado que vale
+   para o engine real: solver sequencial precisa de varredura simétrica ou Jacobi. */
+function xpbd(w,pairs,alpha,dt,rev){ const ac=alpha/(dt*dt);
+  for(let k=0;k<pairs.length;k++){ const pr=pairs[rev?pairs.length-1-k:k];
+    const a=w.bodies[pr[0]],b=w.bodies[pr[1]],L=pr[2];
+    const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,C=D-L,wsum=a.im+b.im+ac;
+    if(wsum<=0)continue; const dl=-C/wsum, ux=dx/D,uy=dy/D;
+    if(!a.fixed){a.x-=ux*dl*a.im;a.y-=uy*dl*a.im; a.vx-=ux*dl*a.im/dt; a.vy-=uy*dl*a.im/dt;}
+    if(!b.fixed){b.x+=ux*dl*b.im;b.y+=uy*dl*b.im; b.vx+=ux*dl*b.im/dt; b.vy+=uy*dl*b.im/dt;} } }
+/* XPBD não-overlap (desigualdade: só projeta quando penetra; alpha 0 = exato) */
+function xpbdOverlap(w,alpha,dt,pad,rev){ const ac=alpha/(dt*dt); const N=w.bodies.length;
+  const PR=[]; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++) PR.push([i,j]);
+  for(let k=0;k<PR.length;k++){ const [i,j]=PR[rev?PR.length-1-k:k];
+    const a=w.bodies[i],b=w.bodies[j];
+    if(!collide(a,b))continue;
+    const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,C=D-(a.r+b.r+(pad??0));
+    if(C>=0)continue; const wsum=a.im+b.im+ac; if(wsum<=0)continue;
+    const dl=-C/wsum, ux=dx/D,uy=dy/D;
+    if(!a.fixed){a.x-=ux*dl*a.im;a.y-=uy*dl*a.im; a.vx-=ux*dl*a.im/dt; a.vy-=uy*dl*a.im/dt;}
+    if(!b.fixed){b.x+=ux*dl*b.im;b.y+=uy*dl*b.im; b.vx+=ux*dl*b.im/dt; b.vy+=uy*dl*b.im/dt;} } }
+
+/* ============================================================
+   UTIL de cenário
+   ============================================================ */
+function ring(w,n,R,r,opts){ const N=Math.max(2, view.count||n); const out=[]; for(let i=0;i<N;i++){ const a=i/N*Math.PI*2;
+  out.push(w.bodies.length); addBody(w,Object.assign({x:Math.cos(a)*R,y:Math.sin(a)*R,r},opts)); } return out; } // count global p/ cenários countable
+function makeChain(w,A,Bp,n,r,opts){ const idx=[]; for(let i=0;i<=n;i++){ const t=i/n;
+  idx.push(w.bodies.length); addBody(w,Object.assign({x:A.x+(Bp.x-A.x)*t,y:A.y+(Bp.y-A.y)*t,r,im:1},opts)); } return idx; }
+const L=(...t)=>new Set(t);
+
+/* ============================================================
+   REGISTRY DE CENÁRIOS
+   Cada cenário: {id,group,title,desc,params[],init,forces,constraints,topo,draw,summary}
+   ============================================================ */
+const param=(key,label,type,o={})=>Object.assign({key,label,type},o);
+const SCN=[];
+
+/* ---- A: integrador & estabilidade ---- */
+SCN.push({ id:'A1',group:'A · Integrador & estabilidade',title:'A1 · Rigidez × explosão (explícito)',
+  desc:'Repulsão rígida no integrador explícito com dt grande explode. Aumente k_rep e dt e empurre os corpos um no outro: veja a energia disparar. É o motivo de precisarmos de sub-stepping ou implícito para forças rígidas.',
+  params:[param('k','k_rep','range',{min:.05,max:6,step:.05,def:.4}),param('dt','dt','range',{min:.2,max:2,step:.1,def:1}),
+    param('damping','damping','range',{min:.3,max:.99,step:.01,def:.8})],
+  defaultCount:6, init(w,p){ ring(w,6,40,18,{cl:L('g'),color:'#6cf'}); },
+  forces(w,p,c){ central(w,0.02,1); repel(w,{profile:'linear',k:p.k,pad:4}); },
+  opts:p=>({dt:p.dt,damping:p.damping,order:'after',cap:60}),
+});
+SCN.push({ id:'A2',group:'A · Integrador & estabilidade',title:'A2 · Sub-stepping doma a rigidez',
+  desc:'Mesma cena rígida de A1, mas com N sub-passos por tick (dt/N, forças recomputadas). Aumente os sub-steps e veja a mesma rigidez assentar em vez de explodir.',
+  params:[param('k','k_rep','range',{min:.5,max:8,step:.1,def:3}),param('sub','sub-steps','range',{min:1,max:40,step:1,def:1}),
+    param('damping','damping','range',{min:.3,max:.99,step:.01,def:.85})],
+  defaultCount:6, init(w,p){ ring(w,6,40,18,{cl:L('g')}); },
+  forces(w,p,c){ central(w,0.03,1); repel(w,{profile:'linear',k:p.k,pad:4}); },
+  opts:p=>({dt:1,damping:p.damping,order:'after',cap:80}), sub:p=>p.sub,
+});
+SCN.push({ id:'A3',group:'A · Integrador & estabilidade',title:'A3 · Explícito × semi-implícito',
+  desc:'Mesma mola, alternando a ordem do damping: "after" = semi-implícito (símplético, mais estável); "before" = estilo explícito legado. Compare a energia/decaimento.',
+  params:[param('order','integrador','select',{options:[['after','semi-implícito (after)'],['before','explícito (before)']],def:'after'}),
+    param('k','k','range',{min:.05,max:3,step:.05,def:.6}),param('damping','damping','range',{min:.3,max:.99,step:.01,def:.85})],
+  init(w,p){ const a=addBody(w,{x:-120,y:0,r:14,fixed:true,color:'#ffcb6b'}); addBody(w,{x:120,y:60,r:14}); },
+  forces(w,p,c){ const a=w.bodies[0],b=w.bodies[1]; const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,f=p.k*(D-80),ux=dx/D,uy=dy/D; addF(b,-ux*f,-uy*f,'chain'); },
+  opts:p=>({dt:1,damping:p.damping,order:p.order,cap:200}),
+});
+
+/* ---- B: mecanismo de constraint ---- */
+SCN.push({ id:'B1',group:'B · Mecanismo de constraint',title:'B1 · XPBD × exato (carga real)',
+  desc:'DECISÃO: penalidade (forças explícitas) foi DESCARTADA para constraints — instável se rígida, resíduo se mole; o braço penalty foi removido deste cenário (o comportamento segue demonstrável em C1–C3/E1). Restam os finalistas, sobre carga realista — anel de N corpos com constraints de distância + não-overlap + atrator central comprimindo: XPBD (projeção complacente; rigidez contínua via α, estável em todo o intervalo) × exato (projeção iterada; satisfaz exatamente). Compare resíduo, overlap, ticks até assentar e ms/tick.',
+  params:[param('mech','mecanismo','select',{options:[['xpbd','XPBD (complacente)'],['exact','exato (projeção)']],def:'xpbd'}),
+    param('alpha','complacência α (XPBD)','range',{min:0,max:.02,step:.0005,def:.002}),
+    param('iters','iterações','range',{min:1,max:60,step:1,def:8}),
+    param('pull','carga central','range',{min:0,max:.08,step:.002,def:.03})],
+  defaultCount:8,
+  init(w,p){ const idx=ring(w,8,120,16,{cl:L('g')}); const N=idx.length; w._pairs=[];
+    const rest=2*120*Math.sin(Math.PI/N);
+    for(let i=0;i<N;i++) w._pairs.push([idx[i],idx[(i+1)%N],rest]); },
+  forces(w,p,c){ central(w,p.pull,1); },
+  constraints(w,p,c){ const it=p.mech==='exact'?Math.max(p.iters,20):p.iters, al=p.mech==='exact'?0:p.alpha;
+    for(let k=0;k<it;k++){ const rev=k%2===1; xpbd(w,w._pairs,al,c.dt,rev); xpbdOverlap(w,al,c.dt,4,rev); } }, // varredura simétrica anti-rotação
+  opts:p=>({dt:1,damping:.85,order:'after',cap:150}),
+  metric(w,p){ let res=0; for(const [i,j,rest] of w._pairs) res=Math.max(res,Math.abs(dist(w.bodies[i],w.bodies[j])-rest)); return {name:'resíduo',value:res}; },
+  summary(w,p){ let res=0; for(const [i,j,rest] of w._pairs) res=Math.max(res,Math.abs(dist(w.bodies[i],w.bodies[j])-rest));
+    let ov=0; const N=w.bodies.length; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){ const o=(w.bodies[i].r+w.bodies[j].r)-dist(w.bodies[i],w.bodies[j]); if(o>ov)ov=o; }
+    return `mecanismo=${p.mech}, resíduo máx=${res.toFixed(2)}px, overlap máx=${Math.max(ov,0).toFixed(2)}px, KE=${KE(w).toFixed(3)}`; },
+  draw(g,w,p){ g.strokeStyle='#445'; g.setLineDash([4,4]); for(const [i,j] of w._pairs){ const a=w.bodies[i],b=w.bodies[j]; g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke(); } g.setLineDash([]); },
+});
+SCN.push({ id:'B2',group:'B · Mecanismo de constraint',title:'B2 · Complacência contínua (XPBD)',
+  desc:'A mesma distância via XPBD, variando a complacência α de 0 (rígida) a alta (mola mole). Estável em todo o intervalo — diferente da penalidade explícita. Arraste um corpo e veja o "give".',
+  params:[param('alpha','complacência α','range',{min:0,max:.03,step:.0005,def:.005}),param('iters','iterações','range',{min:1,max:40,step:1,def:10})],
+  init(w,p){ addBody(w,{x:-90,y:0,r:14}); addBody(w,{x:90,y:0,r:14}); },
+  forces(w,p,c){ central(w,0.015,1); },
+  constraints(w,p,c){ for(let k=0;k<p.iters;k++) xpbd(w,[[0,1,150]],p.alpha,c.dt); },
+  opts:p=>({dt:1,damping:.85}),
+  draw(g,w){ const a=w.bodies[0],b=w.bodies[1]; g.strokeStyle='#445';g.setLineDash([4,4]);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();g.setLineDash([]); },
+});
+
+/* ---- C: perfis de repulsão ---- */
+SCN.push({ id:'C1',group:'C · Perfis de repulsão',title:'C1 · Perfil de força',
+  desc:'Troque o perfil de repulsão. constante → chatter (descontínuo); linear → resíduo sob carga; potência xⁿ → f = K·k·R0·uⁿ (u = overlap de zonas normalizado): n controla a FORMA (n maior = cresce mais rápido ao penetrar) e K o GANHO (compensa uⁿ<u, que enfraquece a força em overlap pequeno). n=1, K=1 ≡ linear. Repulsão é sempre ENTRE CORPOS — atração só via atratores.',
+  params:[param('profile','perfil','select',{options:[['constant','constante'],['linear','linear one-sided (ADOTADO)'],['power','potência xⁿ']],def:'linear'}),
+    param('k','k','range',{min:.05,max:3,step:.05,def:.4}),param('pad','zona (pad)','range',{min:0,max:30,step:1,def:6}),
+    param('n','grau n','range',{min:1,max:5,step:1,def:2}),param('K','ganho K (potência)','range',{min:1,max:20,step:.5,def:4}),
+    param('sub','sub-steps','range',{min:1,max:30,step:1,def:6})],
+  defaultCount:7, init(w,p){ ring(w,7,90,16,{cl:L('g')}); },
+  forces(w,p,c){ central(w,0.03,1); repel(w,{profile:p.profile,k:p.k,pad:p.pad,n:p.n,K:p.K}); },
+  opts:p=>({dt:1,damping:.82,cap:60}), sub:p=>p.sub,
+});
+SCN.push({ id:'C2',group:'C · Perfis de repulsão',title:'C2 · Pad: setpoint × emergente',
+  desc:'Repulsão linear com pad. O gap final NÃO é igual ao pad — ele emerge do balanço com o atrator central. Aumente a carga central e veja o gap encolher abaixo do pad. Prova de que pad é parâmetro de força, não setpoint.',
+  params:[param('pad','pad','range',{min:0,max:40,step:1,def:12}),param('k','k_rep','range',{min:.2,max:4,step:.1,def:1}),param('pull','carga central','range',{min:.01,max:.12,step:.005,def:.03})],
+  init(w,p){ addBody(w,{x:-60,y:0,r:18,cl:L('g')}); addBody(w,{x:60,y:0,r:18,cl:L('g')}); },
+  forces(w,p,c){ central(w,p.pull,1); repel(w,{profile:'linear',k:p.k,pad:p.pad}); },
+  opts:p=>({dt:1,damping:.7,cap:40}),
+  summary(w,p){ const D=dist(w.bodies[0],w.bodies[1]); const gap=D-(w.bodies[0].r+w.bodies[1].r); return `pad=${p.pad}, gap emergente=${gap.toFixed(2)} (≠ pad), padded-alvo=${p.pad}`; },
+});
+SCN.push({ id:'C3',group:'C · Perfis de repulsão',title:'C3 · Controlador PI no contato',
+  desc:'Repulsão proporcional (P) deixa resíduo de overlap sob carga competidora. Ligue o termo integral (Ki) e veja o resíduo ir a ~0. Varie o anti-windup (accMax): alto demais → overshoot/oscilação ao soltar um drag; baixo demais → o integral satura antes de zerar o resíduo. ARRASTE um corpo contra o outro e solte — o sparkline de overlap revela a oscilação que o valor instantâneo esconde.',
+  params:[param('kp','Kp (proporcional)','range',{min:.05,max:1,step:.05,def:.3}),param('ki','Ki (integral)','range',{min:0,max:.2,step:.005,def:0}),
+    param('accMax','anti-windup (accMax)','range',{min:10,max:1200,step:10,def:400}),
+    param('pull','carga central','range',{min:.02,max:.12,step:.005,def:.05})],
+  init(w,p){ addBody(w,{x:-6,y:0,r:18,cl:L('g')}); addBody(w,{x:6,y:0,r:18,cl:L('g')}); },
+  forces(w,p,c){ central(w,p.pull,1); repel(w,{profile:'linear',k:p.kp,pad:4,ki:p.ki,accMax:p.accMax}); },
+  opts:p=>({dt:1,damping:.5,cap:40}),
+  metric(w,p){ const ov=(w.bodies[0].r+w.bodies[1].r)-dist(w.bodies[0],w.bodies[1]); return {name:'overlap',value:Math.max(ov,0)}; },
+  summary(w,p){ const D=dist(w.bodies[0],w.bodies[1]); const ov=(w.bodies[0].r+w.bodies[1].r)-D; return `Ki=${p.ki}, accMax=${p.accMax}, overlap residual=${Math.max(ov,0).toFixed(2)}px`; },
+});
+SCN.push({ id:'C4',group:'C · Perfis de repulsão',title:'C4 · Zona de força (soft) × Gap rígido',
+  desc:'Os dois sentidos de "gap" lado a lado. SOFT: a repulsão atua numa ZONA de tamanho gap além da borda (área azul); o repouso EMERGE e PODE ser comprimido sob carga. RÍGIDO: separação mínima GARANTIDA por projeção — o repouso é ≥ borda+gap sempre. Aumente a compressão central e compare: o soft cede, o rígido não.',
+  params:[param('mode','tipo de gap','select',{options:[['soft','zona de força (soft)'],['rigid','gap rígido (projeção)']],def:'soft'}),
+    param('gap','gap','range',{min:0,max:40,step:1,def:18}),
+    param('pull','compressão central','range',{min:.01,max:.16,step:.005,def:.05}),
+    param('k','rigidez (soft)','range',{min:.1,max:2,step:.1,def:.5})],
+  defaultCount:5, init(w,p){ ring(w,5,75,16,{cl:L('g')}); },
+  forces(w,p,c){ central(w,p.pull,1); if(p.mode==='soft') repel(w,{profile:'linear',k:p.k,pad:p.gap}); },
+  constraints(w,p,c){ if(p.mode!=='rigid')return; const N=w.bodies.length; const dt=c.dt??1;
+    const PR=[]; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++) PR.push([i,j]);
+    for(let it=0;it<12;it++){ const rev=it%2===1; // varredura simétrica anti-rotação
+      for(let k=0;k<PR.length;k++){ const [i,j]=PR[rev?PR.length-1-k:k]; const a=w.bodies[i],b=w.bodies[j];
+      const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,pen=(a.r+b.r+p.gap)-D; if(pen<=0)continue;
+      const ux=dx/D,uy=dy/D,h=pen/2; a.x-=ux*h;a.y-=uy*h;b.x+=ux*h;b.y+=uy*h;
+      a.vx-=ux*h/dt;a.vy-=uy*h/dt;b.vx+=ux*h/dt;b.vy+=uy*h/dt; } } }, // Δv=Δx/dt: projeção sem corrigir velocidade gera KE fantasma
+  opts:p=>({dt:1,damping:.8,cap:60}), sub:p=>p.mode==='soft'?4:1,
+  summary(w,p){ let mg=1e9,N=w.bodies.length; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=dist(w.bodies[i],w.bodies[j]);if(d<mg)mg=d;}
+    const folga=mg-2*w.bodies[0].r; return `modo=${p.mode}, menor folga=${folga.toFixed(1)} (gap alvo=${p.gap}) ${p.mode==='soft'?(folga<p.gap-1.5?'→ COMPRIMIDO abaixo do gap (soft cede)':'≈ gap'):'→ ≥ gap GARANTIDO'}`; },
+});
+SCN.push({ id:'C5',group:'C · Perfis de repulsão',title:'C5 · Zona de força por-elemento (zona×zona)',
+  desc:'Cada elemento tem a SUA zona de força (área azul, pad independente: A e B). A repulsão é SEMPRE zona×zona: dispara quando as duas ZONAS se tocam, ou seja, gap < padA+padB. Ajuste padA e padB e veja a distância de repouso emergir perto de padA+padB (a viz das áreas se tocando bate com a física).',
+  params:[param('padA','zona do elemento A','range',{min:0,max:50,step:1,def:24}),
+    param('padB','zona do elemento B','range',{min:0,max:50,step:1,def:8}),
+    param('pull','atração (junta os dois)','range',{min:.01,max:.1,step:.005,def:.03})],
+  init(w,p){ addBody(w,{x:-130,y:0,r:16,cl:L('g'),color:'#6cf'}); addBody(w,{x:130,y:0,r:16,cl:L('g'),color:'#c792ea'}); },
+  forces(w,p,c){ w.bodies[0].pad=p.padA; w.bodies[1].pad=p.padB; central(w,p.pull,1); repel(w,{profile:'linear',k:.5}); },
+  opts:p=>({dt:1,damping:.8,cap:40}), sub:p=>4,
+  summary(w,p){ const D=dist(w.bodies[0],w.bodies[1]); const gap=D-(w.bodies[0].r+w.bodies[1].r);
+    return `gap real=${gap.toFixed(1)} ≈ padA+padB=${p.padA+p.padB} (zona×zona)`; },
+});
+
+/* ---- D: camadas & polaridade ---- */
+SCN.push({ id:'D1',group:'D · Camadas & polaridade',title:'D1 · Camadas seletivas (interseção simétrica)',
+  desc:'Semântica do PRODUTO (nodeLayers): dois corpos colidem quando seus conjuntos de tags se intersectam — sem polaridade dirigida. Grupo P (azul) tem tags [P]. Alterne as tags do grupo Q (laranja): [P] → Q colide com P e Q×Q; [Q] → só Q×Q (atravessa P); tag única por corpo → livre (sem interseção com ninguém).',
+  params:[param('mode','tags do grupo Q','select',{options:[['shareP','Q.tags=[P] (colide com P e Q×Q)'],['ownQ','Q.tags=[Q] (só Q×Q)'],['free','tag única (livre)']],def:'shareP'})],
+  init(w,p){ for(let i=0;i<3;i++) addBody(w,{x:-80+i*8,y:-40,r:16,cl:L('P'),color:'#6cf'});
+    for(let i=0;i<3;i++) addBody(w,{x:-80+i*8,y:40,r:16,color:'#ffcb6b',role:'Q',qi:i}); applyMode(w,p); },
+  onParam(w,p){ applyMode(w,p); },
+  forces(w,p,c){ central(w,0.02,1); repel(w,{profile:'linear',k:.5,pad:4}); },
+  opts:p=>({dt:1,damping:.8,cap:50}),
+});
+function applyMode(w,p){ for(const b of w.bodies){ if(b.role==='Q'){
+  if(p.mode==='shareP')b.cl=L('P'); else if(p.mode==='ownQ')b.cl=L('Q'); else b.cl=L('uniq'+b.qi); } } }
+SCN.push({ id:'D2',group:'D · Camadas & polaridade',title:'D2 · Polaridade dentro/fora',
+  desc:'Um container-RETÂNGULO (geometria real do produto) e satélites; a distância à borda vem da SDF do rect. Escolha o sinal da força DENTRO e FORA: (−,nenhum)=separar, (nenhum,+)=conter, (−,+)=pack/âncora (fronteira estável), (+,−)=sorter (fronteira instável). Arraste os satélites para sentir o equilíbrio.',
+  params:[param('inside','dentro (d<0)','select',{options:[['repel','repele (−)'],['attract','atrai (+)'],['none','nenhum (0)']],def:'repel'}),
+    param('outside','fora (d>0)','select',{options:[['repel','repele (−)'],['attract','atrai (+)'],['none','nenhum (0)']],def:'attract'}),
+    param('k','k','range',{min:.02,max:.4,step:.01,def:.08})],
+  defaultCount:6, init(w,p){ addBody(w,{x:0,y:0,hw:110,hh:70,fixed:true,color:'#2b3340',role:'target'}); ring(w,6,180,12,{color:'#6cf'}); },
+  forces(w,p,c){ const T=w.bodies[0]; central(w,0.004,1);
+    for(let i=1;i<w.bodies.length;i++){ const b=w.bodies[i]; const s=rectSDF(b.x,b.y,T);
+      const d=s.d-b.r-(b.pad??view.pad); // distância (com sinal) da borda do rect à ZONA do corpo — o slider "zona de força (gap)" da Vista desloca o equilíbrio junto com o desenho
+      const side = d<0 ? p.inside : p.outside; if(side==='none')continue;
+      const mag=p.k*Math.abs(d); const dir = side==='repel'?1:-1;
+      addF(b,dir*s.nx*mag,dir*s.ny*mag, side==='repel'?'repel':'attract'); } },
+  opts:p=>({dt:1,damping:.85,cap:30}),
+  draw(g,w){ const T=w.bodies[0]; g.strokeStyle='#5ccfe6';g.setLineDash([3,4]);g.strokeRect(T.x-T.hw,T.y-T.hh,T.hw*2,T.hh*2);g.setLineDash([]); },
+});
+
+/* ---- E: não-overlap tendência×garantia ---- */
+SCN.push({ id:'E1',group:'E · Não-overlap',title:'E1 · Tendência × garantia',
+  desc:'Compare mecanismos de não-overlap sob compressão (atrator central forte): força mole (resíduo possível), barreira+substep (folga emergente, sem overlap), projeção PBD (contato exato garantido). HUD mostra menor gap e overlap.',
+  params:[param('mech','mecanismo','select',{options:[['soft','força mole (linear)'],['barrier','potência xⁿ + substep'],['pbd','projeção PBD']],def:'soft'}),
+    param('pull','compressão central','range',{min:.02,max:.15,step:.005,def:.06}),param('sub','sub-steps','range',{min:1,max:24,step:1,def:8}),param('iters','iters PBD','range',{min:1,max:40,step:1,def:12})],
+  defaultCount:6, init(w,p){ ring(w,6,70,18,{cl:L('g')}); },
+  forces(w,p,c){ central(w,p.pull,1); if(p.mech==='soft') repel(w,{profile:'linear',k:.4,pad:4});
+    else if(p.mech==='barrier') repel(w,{profile:'power',k:.4,pad:10,n:3,K:8}); },
+  constraints(w,p,c){ if(p.mech!=='pbd')return; const N=w.bodies.length; const dt=c.dt??1;
+    const PR=[]; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++) PR.push([i,j]);
+    for(let it=0;it<p.iters;it++){ const rev=it%2===1; // varredura simétrica anti-rotação
+      for(let k=0;k<PR.length;k++){ const [i,j]=PR[rev?PR.length-1-k:k]; const a=w.bodies[i],b=w.bodies[j];
+      const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,pen=(a.r+b.r)-D; if(pen<=0)continue;
+      const ux=dx/D,uy=dy/D,h=pen/2; a.x-=ux*h;a.y-=uy*h;b.x+=ux*h;b.y+=uy*h;
+      a.vx-=ux*h/dt;a.vy-=uy*h/dt;b.vx+=ux*h/dt;b.vy+=uy*h/dt; } } }, // Δv=Δx/dt: projeção sem corrigir velocidade gera KE fantasma
+  opts:p=>({dt:1,damping:.8,cap:60}), sub:p=>p.mech==='barrier'?p.sub:1,
+  summary(w,p){ let mg=1e9,N=w.bodies.length; for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=dist(w.bodies[i],w.bodies[j]);if(d<mg)mg=d;}
+    const ov=(2*w.bodies[0].r)-mg; return `mecanismo=${p.mech}, menor gap=${mg.toFixed(2)}, overlap=${Math.max(ov,0).toFixed(2)}px ${ov>0.5?'(tendência)':'(sem overlap)'}`; },
+});
+SCN.push({ id:'E2',group:'E · Não-overlap',title:'E2 · Massa / cedência',
+  desc:'Quem cede numa colisão depende da massa (invMass). O corpo pesado (laranja) quase não se move; o leve absorve o deslocamento; o pinado (cinza) é imóvel. Arraste o leve contra os outros.',
+  params:[param('imLight','invMass leve','range',{min:.2,max:3,step:.1,def:2}),param('imHeavy','invMass pesado','range',{min:0,max:1,step:.05,def:.2})],
+  init(w,p){ addBody(w,{x:0,y:0,r:22,im:0,fixed:true,color:'#2b3340'});
+    addBody(w,{x:80,y:0,r:18,im:p.imHeavy,color:'#ffcb6b',role:'heavy'});
+    addBody(w,{x:-80,y:10,r:14,im:p.imLight,color:'#6cf',role:'light'}); applyMass(w,p); },
+  onParam(w,p){ applyMass(w,p); },
+  forces(w,p,c){ central(w,0.03,1); repel(w,{profile:'linear',k:.6,pad:4}); },
+  opts:p=>({dt:1,damping:.8,cap:40}),
+});
+function applyMass(w,p){ for(const b of w.bodies){ if(b.role==='heavy')b.im=p.imHeavy; if(b.role==='light')b.im=p.imLight; } }
+
+/* ---- F: atratores ---- */
+SCN.push({ id:'F1',group:'F · Atratores',title:'F1 · Atrator-ponto (cluster)',
+  desc:'Corpos puxados a um ponto-atrator + repulsão → empacotam ao redor dele. Arraste a alça ◆ para mover o atrator e veja o cluster seguir.',
+  params:[param('c','força atração','range',{min:.01,max:.2,step:.01,def:.05}),param('k','repulsão','range',{min:.2,max:2,step:.1,def:.6})],
+  defaultCount:7, init(w,p){ w.attractors.push({type:'point',x:0,y:0}); ring(w,7,140,16,{cl:L('g')}); },
+  forces(w,p,c){ const P0=w.attractors[0]; attractPoint(w, w.bodies.map((_,i)=>i), P0, p.c); repel(w,{profile:'linear',k:p.k,pad:4}); },
+  opts:p=>({dt:1,damping:.82,cap:50}),
+  draw(g,w){ drawAttractor(g,w.attractors[0]); },
+});
+SCN.push({ id:'F2',group:'F · Atratores',title:'F2 · Atrator-path (alinhar)',
+  desc:'Corpos puxados a uma linha (perpendicular) → alinham numa fila, livres para deslizar; repulsão os espalha ao longo dela. Arraste as alças ◆ para mover/rotacionar a linha.',
+  params:[param('c','força','range',{min:.02,max:.3,step:.02,def:.12}),param('k','repulsão','range',{min:.2,max:2,step:.1,def:.6})],
+  defaultCount:6, init(w,p){ w.attractors.push({type:'line',x:0,y:0,ang:0}); ring(w,6,120,16,{cl:L('g')}); },
+  forces(w,p,c){ attractLine(w, w.bodies.map((_,i)=>i), w.attractors[0], p.c); repel(w,{profile:'linear',k:p.k,pad:6}); central(w,0.003,1); },
+  opts:p=>({dt:1,damping:.82,cap:40}),
+  draw(g,w){ drawAttractor(g,w.attractors[0]); },
+});
+SCN.push({ id:'F3',group:'F · Atratores',title:'F3 · Atrator-região (conter) + peer',
+  desc:'Filhos (azul) atraídos para DENTRO da região (container); um peer (laranja) repelido pela BORDA da região (SDF do rect — simétrico à atração dos filhos). Os filhos atravessam a borda livremente (atração, não repulsão); o peer não entra. Resolve o caso "interno × externo" sem veto.',
+  params:[param('c','atração p/ dentro','range',{min:.02,max:.3,step:.02,def:.1}),param('kp','repulsão peer','range',{min:.2,max:2,step:.1,def:.6}),
+    param('margin','folga do peer','range',{min:0,max:40,step:1,def:10})],
+  init(w,p){ w.attractors.push({type:'region',x0:-90,y0:-60,x1:90,y1:60});
+    for(let i=0;i<3;i++) addBody(w,{x:-160+i*30,y:120,r:16,color:'#6cf',role:'child'});
+    addBody(w,{x:0,y:0,r:24,color:'#ffcb6b',role:'peer'}); },
+  forces(w,p,c){ const box=w.attractors[0]; const kids=w.bodies.map((b,i)=>b.role==='child'?i:-1).filter(i=>i>=0);
+    attractRegion(w,kids,box,p.c);
+    // peer repelido pela BORDA (SDF do rect da região): penetração = (raio+folga) − distância à borda
+    const peer=w.bodies.find(b=>b.role==='peer');
+    const R={x:(box.x0+box.x1)/2,y:(box.y0+box.y1)/2,hw:(box.x1-box.x0)/2,hh:(box.y1-box.y0)/2};
+    const s=rectSDF(peer.x,peer.y,R); const pen=(peer.r+p.margin)-s.d;
+    if(pen>0){ const f=p.kp*pen; addF(peer,s.nx*f,s.ny*f,'repel'); }
+    repel(w,{profile:'linear',k:.4,pad:4}); },
+  opts:p=>({dt:1,damping:.82,cap:40}),
+  draw(g,w){ drawAttractor(g,w.attractors[0]); },
+});
+SCN.push({ id:'F4',group:'F · Atratores',title:'F4 · Atração corpo-corpo × atrator',
+  desc:'Toggle entre "todos-com-todos se atraem" (degenerado: assimétrico/frustrado) e "atrator-ponto compartilhado" (limpo). Mesma quantidade de corpos; veja por que a atração par-a-par global foi descartada.',
+  params:[param('mode','modo','select',{options:[['attractor','atrator compartilhado (limpo)'],['allpairs','todos-com-todos (degenerado)']],def:'attractor'}),param('c','força','range',{min:.01,max:.3,step:.01,def:.06})],
+  defaultCount:7, init(w,p){ w.attractors.push({type:'point',x:0,y:0}); ring(w,7,130,16,{cl:L('g')}); },
+  forces(w,p,c){ const idxs=w.bodies.map((_,i)=>i);
+    if(p.mode==='attractor') attractPoint(w,idxs,w.attractors[0],p.c); else pairAttractAll(w,idxs,p.c,400);
+    repel(w,{profile:'linear',k:.6,pad:4}); },
+  opts:p=>({dt:1,damping:.82,cap:50}),
+  draw(g,w,p){ if(p.mode==='attractor') drawAttractor(g,w.attractors[0]); },
+});
+
+SCN.push({ id:'F5',group:'F · Atratores',title:'F5 · Contenção: campo × geometria derivada',
+  desc:'O confronto dos dois modelos de container. CAMPO: o container é uma região fixa; filhos são atraídos para dentro (abaixo do header), o peer é repelido pela borda (SDF) — arraste um filho para fora e solte: ele VOLTA. DERIVADA (modelo atual do produto): o rect do container é o bbox dos filhos + padding — arrastar um filho para fora ESTICA o container (sem contenção; a costura frágil do compile-world). A aresta filho→peer atravessa a parede livremente nos dois modos. Métrica: área do container.',
+  params:[param('mode','modelo','select',{options:[['field','campo (região fixa)'],['derived','derivada (bbox dos filhos)']],def:'field'}),
+    param('catt','atração p/ dentro','range',{min:.02,max:.3,step:.01,def:.08}),
+    param('kp','repulsão do peer','range',{min:.2,max:2,step:.1,def:.8}),
+    param('pad','padding','range',{min:8,max:48,step:2,def:24})],
+  init(w,p){ w._hw=130; w._hh=85; w._hdr=22;
+    for(let i=0;i<4;i++) addBody(w,{x:-60+i*40,y:(i%2?-20:25),hw:26,hh:16,cl:L('k'),color:'#6cf',role:'child'});
+    w._peer=addBody(w,{x:230,y:-40,hw:30,hh:20,cl:L('k'),color:'#ffcb6b',role:'peer'});
+    const ch=makeChain(w,w.bodies[0],w._peer,5,4,{color:'#9ece6a'});
+    ch.forEach((bi,k)=>w.bodies[bi].cl=L('e'+k)); // tag única por corner → fora do repel global
+    w.chains.push(ch); },
+  forces(w,p,c){ const kids=w.bodies.filter(b=>b.role==='child'); const peer=w._peer;
+    let R;
+    if(p.mode==='field'){ R={x:0,y:0,hw:w._hw,hh:w._hh}; }
+    else { let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const b of kids){ x0=Math.min(x0,b.x-b.hw);y0=Math.min(y0,b.y-b.hh);x1=Math.max(x1,b.x+b.hw);y1=Math.max(y1,b.y+b.hh); }
+      R={x:(x0+x1)/2, y:(y0+y1)/2-w._hdr/2, hw:(x1-x0)/2+p.pad, hh:(y1-y0)/2+p.pad+w._hdr/2}; }
+    w._R=R;
+    if(p.mode==='field'){ const box={x0:R.x-R.hw+p.pad, y0:R.y-R.hh+w._hdr+p.pad, x1:R.x+R.hw-p.pad, y1:R.y+R.hh-p.pad};
+      for(const b of kids){ const cx=Math.max(box.x0+b.hw,Math.min(box.x1-b.hw,b.x)), cy=Math.max(box.y0+b.hh,Math.min(box.y1-b.hh,b.y));
+        addF(b,p.catt*(cx-b.x),p.catt*(cy-b.y),'attract'); } }
+    else { for(const b of kids) addF(b,-0.01*b.x,-0.01*b.y,'central'); } // derivada: filhos só têm central+colisão
+    // peer repelido pela BORDA do container (nos dois modos)
+    const s=rectSDF(peer.x,peer.y,R); const pen=(Math.max(peer.hw,peer.hh)+8)-s.d;
+    if(pen>0){ addF(peer,s.nx*p.kp*pen,s.ny*p.kp*pen,'repel'); }
+    addF(peer,0.004*(220-peer.x),0.004*(0-peer.y),'central'); // âncora fraca do peer à direita
+    repel(w,{profile:'linear',k:.5,pad:6});
+    const ch=w.chains[0], e0=w.bodies[ch[0]], e1=w.bodies[ch[ch.length-1]], c0=kids[0];
+    addF(e0,.3*(c0.x-e0.x),.3*(c0.y-e0.y),'attract'); addF(e1,.3*(peer.x-e1.x),.3*(peer.y-e1.y),'attract');
+    chainSpring(w,ch,.25,dist(e0,e1)/(ch.length-1)); midline(w,ch,.08); },
+  opts:p=>({dt:1,damping:.82,cap:40}), sub:p=>2,
+  metric(w,p){ const R=w._R; return {name:'área/1000',value:R?(R.hw*2*R.hh*2/1000):0}; },
+  summary(w,p){ const R=w._R||{x:0,y:0,hw:0,hh:0}; let out=0;
+    for(const b of w.bodies) if(b.role==='child'){ const s=rectSDF(b.x,b.y,R); if(s.d>-Math.min(b.hw,b.hh)) out++; }
+    return `modelo=${p.mode}, container=${(R.hw*2).toFixed(0)}×${(R.hh*2).toFixed(0)}px, filhos fora/na borda=${out}`; },
+  draw(g,w,p){ const R=w._R; if(R){ g.strokeStyle='#5ccfe6'; g.setLineDash([4,4]);
+    g.strokeRect(R.x-R.hw,R.y-R.hh,R.hw*2,R.hh*2); g.setLineDash([]);
+    g.fillStyle='rgba(92,207,230,.12)'; g.fillRect(R.x-R.hw,R.y-R.hh,R.hw*2,w._hdr); }
+    drawChain(g,w,w.chains[0]); },
+});
+
+/* ---- G: arestas por força ---- */
+function edgeSetup(w){ w.handles.push({x:-180,y:-80}); w.handles.push({x:180,y:80});
+  const A=w.handles[0],Bp=w.handles[1]; const chain=makeChain(w,A,Bp,6,5,{color:'#9ece6a',im:1});
+  w.bodies[chain[0]].fixed=false; w.bodies[chain[chain.length-1]].fixed=false; w.chains.push(chain); return chain; }
+SCN.push({ id:'G1',group:'G · Arestas por força',title:'G1 · Aresta roteando ao redor de obstáculos (rect)',
+  desc:'Aresta = cadeia de corners. Endpoints atraídos às alças ◆, corners repelidos por nós-obstáculo RETANGULARES (forma real do produto, via SDF), mola de cadeia + midline mantêm a linha. Aumente o nº de obstáculos, arraste-os ou às alças e veja a aresta recontornar.',
+  params:[param('nobs','nº obstáculos','range',{min:1,max:4,step:1,def:1}),
+    param('krep','repulsão obstáculo','range',{min:.1,max:2,step:.1,def:.8}),param('kchain','mola cadeia','range',{min:.05,max:1,step:.05,def:.3}),param('kmid','midline','range',{min:0,max:.5,step:.02,def:.12}),param('sub','sub-steps','range',{min:1,max:20,step:1,def:6})],
+  rebuildOn:['nobs'],
+  init(w,p){ const chain=edgeSetup(w); w._obs=[];
+    const spots=[[0,0],[-100,70],[100,-70],[0,-120]];
+    for(let i=0;i<(p.nobs||1);i++){ const [x,y]=spots[i]; w._obs.push(addBody(w,{x,y,hw:48,hh:30,fixed:true,color:'#ffcb6b',role:'obstacle'})); } },
+  forces(w,p,c){ const chain=w.chains[0]; const A=w.handles[0],Bp=w.handles[1];
+    const e0=w.bodies[chain[0]],e1=w.bodies[chain[chain.length-1]];
+    addF(e0,.2*(A.x-e0.x),.2*(A.y-e0.y),'attract'); addF(e1,.2*(Bp.x-e1.x),.2*(Bp.y-e1.y),'attract');
+    chainSpring(w,chain,p.kchain, dist(w.bodies[chain[0]],w.bodies[chain[chain.length-1]])/(chain.length-1));
+    midline(w,chain,p.kmid);
+    segVsBodies(w,chain,w._obs,p.krep,6); },
+  opts:p=>({dt:1,damping:.8,cap:40}), sub:p=>p.sub,
+  draw(g,w){ for(const h of w.handles) drawHandle(g,h); drawChain(g,w,w.chains[0]); },
+});
+SCN.push({ id:'G2',group:'G · Arestas por força',title:'G2 · Arestas que não se cruzam (N arestas)',
+  desc:'N arestas-cadeia que se repelem (segmento×segmento, distância exata; cruzamento REAL ganha força perpendicular dedicada — a repulsão por proximidade sozinha não descruza). HUD/sparkline mostram a CONTAGEM de cruzamentos, a métrica que importa. Arraste as alças para forçar cruzamentos.',
+  params:[param('nedges','nº de arestas','range',{min:2,max:5,step:1,def:2}),
+    param('kcross','anti-cruzamento','range',{min:.1,max:2,step:.1,def:.7}),param('kchain','mola cadeia','range',{min:.05,max:1,step:.05,def:.3}),param('sub','sub-steps','range',{min:1,max:20,step:1,def:6})],
+  rebuildOn:['nedges'],
+  init(w,p){ const n=p.nedges||2; const colors=['#9ece6a','#c792ea','#5ccfe6','#ffcb6b','#ff8fa3'];
+    for(let e=0;e<n;e++){ const a=e/n*Math.PI*2, b=a+Math.PI*(1-0.18*(e%2?1:-1)); // pares quase-diametrais → tendem a cruzar no meio
+      const h1={x:Math.cos(a)*200,y:Math.sin(a)*120}, h2={x:Math.cos(b)*200,y:Math.sin(b)*120};
+      w.handles.push(h1,h2);
+      w.chains.push(makeChain(w,h1,h2,5,5,{color:colors[e%5]})); } },
+  forces(w,p,c){ const hs=w.handles, cs=w.chains;
+    for(let e=0;e<cs.length;e++){ const ch=cs[e],A=hs[e*2],B=hs[e*2+1]; const e0=w.bodies[ch[0]],e1=w.bodies[ch[ch.length-1]];
+      addF(e0,.25*(A.x-e0.x),.25*(A.y-e0.y),'attract'); addF(e1,.25*(B.x-e1.x),.25*(B.y-e1.y),'attract');
+      chainSpring(w,ch,p.kchain,40); midline(w,ch,.1); }
+    const margin=18;
+    for(let ea=0;ea<cs.length;ea++)for(let eb=ea+1;eb<cs.length;eb++){
+      const a=cs[ea],b=cs[eb];
+      for(let m=0;m+1<a.length;m++)for(let n2=0;n2+1<b.length;n2++){
+        const pA=w.bodies[a[m]],qA=w.bodies[a[m+1]],pB=w.bodies[b[n2]],qB=w.bodies[b[n2+1]];
+        const r=segDist(pA,qA,pB,qB); if(r.d>=margin)continue;
+        if(r.crossing){ // cruzados: empurra A pela normal de B (e vice-versa) — proximidade não resolve d=0
+          const ex=qB.x-pB.x,ey=qB.y-pB.y,Lb=Math.hypot(ex,ey)||1e-9; let nx=-ey/Lb,ny=ex/Lb;
+          const dot=((pA.x+qA.x)-(pB.x+qB.x))*nx/2+((pA.y+qA.y)-(pB.y+qB.y))*ny/2; if(dot<0){nx=-nx;ny=-ny;}
+          const f=p.kcross*margin*.5;
+          addF(pA,nx*f,ny*f,'repel'); addF(qA,nx*f,ny*f,'repel'); addF(pB,-nx*f,-ny*f,'repel'); addF(qB,-nx*f,-ny*f,'repel'); continue; }
+        const [Pt,cl]=r.pa; const dx=Pt.x-cl[0],dy=Pt.y-cl[1],D=Math.hypot(dx,dy)||1e-9,f=p.kcross*(margin-r.d); const ux=dx/D,uy=dy/D;
+        addF(Pt,ux*f,uy*f,'repel'); } } },
+  opts:p=>({dt:1,damping:.8,cap:40}), sub:p=>p.sub,
+  metric(w,p){ return {name:'cruzamentos',value:countChainCrossings(w,w.chains)}; },
+  summary(w,p){ return `cruzamentos=${countChainCrossings(w,w.chains)}`; },
+  draw(g,w){ for(const h of w.handles) drawHandle(g,h); for(const ch of w.chains) drawChain(g,w,ch); },
+});
+SCN.push({ id:'G3',group:'G · Arestas por força',title:'G3 · Topologia: subdivisão fixa × fissão/fusão dinâmica',
+  desc:'FIXA (estilo Holten): nº de corners constante — poucos não contornam bem, muitos custam mais, mas a topologia é estável. DINÂMICA: segmentos longos fissionam no meio, curtos fundem — adapta a resolução ao contorno, mas é o mecanismo que no engine v1 explodiu em cascata de shelves. O sparkline de corners revela oscilação de topologia (split↔merge sem convergir). Arraste o obstáculo contra a aresta nos dois modos.',
+  params:[param('mode','topologia','select',{options:[['fixed','fixa (n constante)'],['dyn','dinâmica (fissão/fusão)']],def:'fixed'}),
+    param('n','corners (fixa)','range',{min:2,max:16,step:1,def:6}),
+    param('lmax','fissão acima de (px)','range',{min:40,max:140,step:5,def:80}),
+    param('krep','repulsão','range',{min:.1,max:2,step:.1,def:.8}),param('sub','sub-steps','range',{min:1,max:16,step:1,def:6})],
+  init(w,p){ w.handles.push({x:-180,y:-70},{x:180,y:70}); const ch=makeChain(w,w.handles[0],w.handles[1],p.n,5,{color:'#9ece6a'}); w.chains.push(ch);
+    w._ob=addBody(w,{x:0,y:0,r:40,fixed:true,color:'#ffcb6b',role:'obstacle'}); },
+  forces(w,p,c){ const ch=w.chains[0],A=w.handles[0],B=w.handles[1]; const e0=w.bodies[ch[0]],e1=w.bodies[ch[ch.length-1]];
+    addF(e0,.25*(A.x-e0.x),.25*(A.y-e0.y),'attract'); addF(e1,.25*(B.x-e1.x),.25*(B.y-e1.y),'attract');
+    chainSpring(w,ch,.3,dist(w.bodies[ch[0]],w.bodies[ch[ch.length-1]])/(ch.length-1)); midline(w,ch,.1);
+    segVsBodies(w,ch,[w._ob],p.krep,6); },
+  topo(w,p,c){ if(p.mode!=='dyn')return; const ch=w.chains[0]; const pts=ch.map(i=>w.bodies[i]);
+    const lmin=p.lmax/4; // histerese: filho de uma fissão (L/2) fica acima de lmin → sem flip-flop imediato
+    let changed=false; const np=[pts[0]];
+    for(let i=1;i<pts.length;i++){ const a=np[np.length-1], b=pts[i];
+      const Ls=Math.hypot(b.x-a.x,b.y-a.y);
+      if(Ls>p.lmax && pts.length<24){ np.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,vx:(a.vx+b.vx)/2,vy:(a.vy+b.vy)/2}); changed=true; }
+      else if(Ls<lmin && i<pts.length-1 && pts.length>4){ changed=true; continue; } // funde: descarta o corner interior
+      np.push(b); }
+    if(!changed)return;
+    // reconstrói o mundo: obstáculo (mesmo objeto) + cadeia nova com posições/velocidades preservadas
+    w.bodies.length=0; w.chains.length=0; w.acc.clear(); w.bodies.push(w._ob);
+    const idx=[]; for(const q of np){ idx.push(w.bodies.length);
+      const nb=addBody(w,{x:q.x,y:q.y,r:5,color:'#9ece6a',im:1}); nb.vx=q.vx||0; nb.vy=q.vy||0; }
+    w.chains.push(idx); },
+  opts:p=>({dt:1,damping:.8,cap:40}), sub:p=>p.sub, rebuildOn:['n','mode'],
+  metric(w,p){ return {name:'corners',value:w.chains[0].length}; },
+  summary(w,p){ return `topologia=${p.mode}, corners=${w.chains[0].length}${p.mode==='dyn'?' (oscilação no sparkline = flip-flop split/merge)':''}`; },
+  draw(g,w){ for(const h of w.handles) drawHandle(g,h); drawChain(g,w,w.chains[0]); },
+});
+SCN.push({ id:'G4',group:'G · Arestas por força',title:'G4 · Manhattan real: dobra × snap × híbrido',
+  desc:'Ortogonalidade é restrição DISCRETA — a pergunta dura do routing ortogonal (router default do produto). Compare: FORÇA DE DOBRA (contínua: empurra cada segmento ao seu eixo dominante — pode travar em zigue-zague diagonal), PROJEÇÃO AXIS-SNAP (dura, a cada tick: ortogonal sempre, mas briga com o contorno do obstáculo), e HÍBRIDO (física livre enquanto há energia; snap só no assentamento — o caminho que o v1 acabou tomando). HUD: erro de ortogonalidade Σ min(|dx|,|dy|) e segmentos dentro do obstáculo. O render curvo segue disponível — a geometria é a mesma cadeia.',
+  params:[param('mech','mecanismo','select',{options:[['none','nenhum (baseline)'],['bend','força de dobra (soft)'],['snap','projeção axis-snap (dura)'],['hybrid','híbrido (snap no repouso)']],def:'bend'}),
+    param('kbend','força de dobra','range',{min:0,max:1,step:.02,def:.3}),
+    param('iters','iterações snap','range',{min:1,max:12,step:1,def:4}),
+    param('keThr','limiar de repouso (híbrido)','range',{min:.01,max:2,step:.01,def:.3}),
+    param('krep','repulsão obstáculo','range',{min:.1,max:2,step:.1,def:.8}),
+    param('render','render','select',{options:[['poly','polilinha'],['curve','curva (Catmull-Rom)']],def:'poly'})],
+  init(w,p){ w.handles.push({x:-190,y:-80},{x:190,y:80}); const ch=makeChain(w,w.handles[0],w.handles[1],8,5,{color:'#9ece6a'}); w.chains.push(ch);
+    w._ob=addBody(w,{x:0,y:0,hw:52,hh:34,fixed:true,color:'#ffcb6b',role:'obstacle'}); },
+  forces(w,p,c){ const ch=w.chains[0],A=w.handles[0],B=w.handles[1]; const e0=w.bodies[ch[0]],e1=w.bodies[ch[ch.length-1]];
+    addF(e0,.25*(A.x-e0.x),.25*(A.y-e0.y),'attract'); addF(e1,.25*(B.x-e1.x),.25*(B.y-e1.y),'attract');
+    chainSpring(w,ch,.3,dist(e0,e1)/(ch.length-1)); midline(w,ch,.06); segVsBodies(w,ch,[w._ob],p.krep,6);
+    if(p.mech==='bend'){ for(let m=0;m+1<ch.length;m++){ const a=w.bodies[ch[m]],b=w.bodies[ch[m+1]];
+      const dx=b.x-a.x,dy=b.y-a.y; // empurra o segmento ao eixo dominante: zera a coordenada MENOR rumo à média
+      if(Math.abs(dx)<Math.abs(dy)){ const mx=(a.x+b.x)/2; addF(a,p.kbend*(mx-a.x),0,'bend'); addF(b,p.kbend*(mx-b.x),0,'bend'); }
+      else { const my=(a.y+b.y)/2; addF(a,0,p.kbend*(my-a.y),'bend'); addF(b,0,p.kbend*(my-b.y),'bend'); } } } },
+  constraints(w,p,c){ const ch=w.chains[0];
+    const snap = p.mech==='snap' || (p.mech==='hybrid' && KE(w)<p.keThr);
+    if(!snap)return;
+    for(let it=0;it<p.iters;it++) for(let m=0;m+1<ch.length;m++){ const a=w.bodies[ch[m]],b=w.bodies[ch[m+1]];
+      const dx=b.x-a.x,dy=b.y-a.y;
+      // projeta posição E velocidade no eixo snapado (média = conserva momento) —
+      // sem o ajuste de velocidade a projeção injeta energia todo tick (pitfall PBD)
+      if(Math.abs(dx)<Math.abs(dy)){ const mx=(a.x+b.x)/2, mv=(a.vx+b.vx)/2; a.x=mx; b.x=mx; a.vx=mv; b.vx=mv; }
+      else { const my=(a.y+b.y)/2, mv=(a.vy+b.vy)/2; a.y=my; b.y=my; a.vy=mv; b.vy=mv; } } },
+  opts:p=>({dt:1,damping:.8,cap:40}), sub:p=>4,
+  metric(w,p){ const ch=w.chains[0]; let e=0; for(let m=0;m+1<ch.length;m++){ const a=w.bodies[ch[m]],b=w.bodies[ch[m+1]];
+    e+=Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y)); } return {name:'erro orto',value:e}; },
+  summary(w,p){ const ch=w.chains[0]; let e=0,pen=0; for(let m=0;m+1<ch.length;m++){ const a=w.bodies[ch[m]],b=w.bodies[ch[m+1]];
+    e+=Math.min(Math.abs(b.x-a.x),Math.abs(b.y-a.y));
+    const s=rectSDF((a.x+b.x)/2,(a.y+b.y)/2,w._ob); if(s.d<0)pen++; }
+    return `mech=${p.mech}, erro ortogonal=${e.toFixed(1)}px${e<2?' (≈ Manhattan)':''}, segmentos dentro do obstáculo=${pen}`; },
+  draw(g,w,p){ for(const h of w.handles) drawHandle(g,h); if(p.render==='curve') drawChainCurve(g,w,w.chains[0]); else drawChain(g,w,w.chains[0]); },
+});
+SCN.push({ id:'G5',group:'G · Arestas por força',title:'G5 · Aresta-mola (conectividade)',
+  desc:'A aresta puxa seus NÓS (force-directed). Sem mola: nós repelem e se espalham; com mola: nós conectados se aproximam até o rest length. Ajuste a rigidez/rest.',
+  params:[param('k','mola conectividade','range',{min:0,max:.3,step:.01,def:0}),param('rest','rest length','range',{min:30,max:200,step:5,def:80})],
+  init(w,p){ addBody(w,{x:-150,y:0,r:18,cl:L('g')}); addBody(w,{x:150,y:0,r:18,cl:L('g')}); addBody(w,{x:0,y:120,r:18,cl:L('g')}); },
+  forces(w,p,c){ central(w,0.01,1); repel(w,{profile:'linear',k:.5,pad:6});
+    const pairs=[[0,1],[1,2]]; for(const [i,j] of pairs){ const a=w.bodies[i],b=w.bodies[j];
+      const dx=b.x-a.x,dy=b.y-a.y,D=Math.hypot(dx,dy)||1e-9,f=p.k*(D-p.rest),ux=dx/D,uy=dy/D; addF(a,ux*f,uy*f,'chain'); addF(b,-ux*f,-uy*f,'chain'); } },
+  opts:p=>({dt:1,damping:.82,cap:40}),
+  draw(g,w){ g.strokeStyle='#5ccfe6'; g.lineWidth=1.5/view.zoom; for(const [i,j] of [[0,1],[1,2]]){ const a=w.bodies[i],b=w.bodies[j]; g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke(); } }, // mostra os links de conectividade
+});
+
+/* ---- H: dissipação ---- */
+SCN.push({ id:'H1',group:'H · Dissipação',title:'H1 · Regime de dissipação',
+  desc:'Como o sistema perde energia e para. Viscoso (−c·v): converge assintótico, nunca exato. Atrito seco (−μ·sign(v)): para em TEMPO FINITO + stiction. Empurre e veja a diferença na KE.',
+  params:[param('mode','dissipação','select',{options:[['viscous','viscoso (−c·v)'],['dry','atrito seco (−μ·sign v)'],['both','ambos']],def:'viscous'}),
+    param('c','c viscoso','range',{min:.8,max:.99,step:.01,def:.92}),param('mu','μ atrito seco','range',{min:0,max:3,step:.1,def:.8})],
+  defaultCount:5, init(w,p){ ring(w,5,90,16,{cl:L('g')}); for(const b of w.bodies){ b.vx=(rng()-.5)*30; b.vy=(rng()-.5)*30; } }, // rng com seed → empurrão inicial reprodutível
+  forces(w,p,c){ central(w,0.01,1); repel(w,{profile:'linear',k:.5,pad:6});
+    if(p.mode==='dry'||p.mode==='both'){ for(const b of w.bodies){ const s=Math.hypot(b.vx,b.vy); if(s>1e-4){ addF(b,-p.mu*b.vx/s,-p.mu*b.vy/s,'fric'); } } } },
+  opts:p=>({dt:1,damping:(p.mode==='dry')?0.999:p.c,cap:60}),
+  summary(w,p){ return `dissipação=${p.mode}, KE=${KE(w).toFixed(4)} ${KE(w)<1e-4?'(parado)':''}`; },
+});
+
+/* ---- I: integração & escala (decisivos de destino) ---- */
+/* anti-cruzamento cadeia×cadeia (mesma mecânica do G2, fatorada p/ os cenários I) */
+function antiCross(w,chains,kcross,margin){
+  for(let ea=0;ea<chains.length;ea++)for(let eb=ea+1;eb<chains.length;eb++){
+    const a=chains[ea],b=chains[eb];
+    for(let m=0;m+1<a.length;m++)for(let n2=0;n2+1<b.length;n2++){
+      const pA=w.bodies[a[m]],qA=w.bodies[a[m+1]],pB=w.bodies[b[n2]],qB=w.bodies[b[n2+1]];
+      const r=segDist(pA,qA,pB,qB); if(r.d>=margin)continue;
+      if(r.crossing){ const ex=qB.x-pB.x,ey=qB.y-pB.y,Lb=Math.hypot(ex,ey)||1e-9; let nx=-ey/Lb,ny=ex/Lb;
+        const dot=((pA.x+qA.x)-(pB.x+qB.x))*nx/2+((pA.y+qA.y)-(pB.y+qB.y))*ny/2; if(dot<0){nx=-nx;ny=-ny;}
+        const f=kcross*margin*.5;
+        addF(pA,nx*f,ny*f,'repel'); addF(qA,nx*f,ny*f,'repel'); addF(pB,-nx*f,-ny*f,'repel'); addF(qB,-nx*f,-ny*f,'repel'); continue; }
+      const [Pt,cl]=r.pa; const dx=Pt.x-cl[0],dy=Pt.y-cl[1],D=Math.hypot(dx,dy)||1e-9,f=kcross*(margin-r.d);
+      addF(Pt,dx/D*f,dy/D*f,'repel'); } } }
+SCN.push({ id:'I1',group:'I · Integração & escala',title:'I1 · Acoplamento layout+routing (tese do solver único)',
+  desc:'A aposta central do engine v2: nós e arestas no MESMO mundo físico. Nós-rect colidem entre si e são puxados ao centro; arestas-cadeia seguem seus nós, contornam os nós alheios e não se cruzam. Ligue a RECIPROCIDADE (aresta empurra nó) e veja o sistema negociar: o corredor apertado se abre para a aresta passar. Arraste um nó e observe o re-roteamento ao vivo. Sem reciprocidade = routing como pós-processo (v1); com = unificação de verdade.',
+  params:[param('recip','aresta empurra nó?','select',{options:[['off','não (routing passivo, v1)'],['on','sim (acoplado, v2)']],def:'on'}),
+    param('krep','repulsão aresta↔nó','range',{min:.1,max:2,step:.1,def:.7}),
+    param('kchain','mola cadeia','range',{min:.05,max:1,step:.05,def:.3}),
+    param('kcross','anti-cruzamento','range',{min:0,max:2,step:.1,def:.6}),
+    param('pull','atrator central','range',{min:.002,max:.04,step:.002,def:.012}),
+    param('sub','sub-steps','range',{min:1,max:12,step:1,def:4})],
+  init(w,p){ const NP=[[-160,-90],[150,-100],[-140,100],[160,90],[0,10]];
+    w._nodes=NP.map(([x,y])=>addBody(w,{x,y,hw:44,hh:26,cl:L('n'),color:'#6cf',role:'node'}));
+    const EP=[[0,3],[1,2],[4,0]]; w._epairs=EP; const colors=['#9ece6a','#c792ea','#ffcb6b'];
+    EP.forEach(([a,b],e)=>{ const ch=makeChain(w,w._nodes[a],w._nodes[b],5,4,{color:colors[e]});
+      ch.forEach((bi,k)=>w.bodies[bi].cl=L('c'+e+'_'+k)); w.chains.push(ch); }); },
+  forces(w,p,c){ const nodes=w._nodes;
+    for(const nb of nodes) addF(nb,-p.pull*nb.x,-p.pull*nb.y,'central');
+    repel(w,{profile:'linear',k:.5,pad:10}); // nó×nó (tag n; corners têm tags únicas → fora)
+    w._epairs.forEach(([ia,ib],e)=>{ const ch=w.chains[e], A=nodes[ia], B=nodes[ib];
+      const e0=w.bodies[ch[0]], e1=w.bodies[ch[ch.length-1]];
+      addF(e0,.35*(A.x-e0.x),.35*(A.y-e0.y),'attract'); addF(e1,.35*(B.x-e1.x),.35*(B.y-e1.y),'attract');
+      chainSpring(w,ch,p.kchain,dist(A,B)/(ch.length-1)); midline(w,ch,.05);
+      // contorno dos nós ALHEIOS, com reciprocidade opcional (aresta empurra o nó de volta)
+      for(let m=0;m+1<ch.length;m++){ const pq=w.bodies[ch[m]], q=w.bodies[ch[m+1]];
+        for(let ni=0;ni<nodes.length;ni++){ if(ni===ia||ni===ib)continue; const o=nodes[ni];
+          const vx=q.x-pq.x,vy=q.y-pq.y,L2=vx*vx+vy*vy||1e-9;
+          let t=((o.x-pq.x)*vx+(o.y-pq.y)*vy)/L2; t=Math.max(0,Math.min(1,t));
+          const s=rectSDF(pq.x+vx*t,pq.y+vy*t,o); const pen=14-s.d;
+          if(pen>0){ const f=p.krep*pen;
+            addF(pq,s.nx*f*(1-t),s.ny*f*(1-t),'seg'); addF(q,s.nx*f*t,s.ny*f*t,'seg');
+            if(p.recip==='on') addF(o,-s.nx*f,-s.ny*f,'seg'); } } } });
+    if(p.kcross>0) antiCross(w,w.chains,p.kcross,14); },
+  opts:p=>({dt:1,damping:.82,cap:40}), sub:p=>p.sub,
+  metric(w,p){ return {name:'cruzamentos',value:countChainCrossings(w,w.chains)}; },
+  summary(w,p){ return `recíproco=${p.recip}, cruzamentos=${countChainCrossings(w,w.chains)}, KE=${KE(w).toFixed(3)}`; },
+  draw(g,w){ for(const ch of w.chains) drawChain(g,w,ch); },
+});
+SCN.push({ id:'I2',group:'I · Integração & escala',title:'I2 · Densidade: go/no-go (~centenas)',
+  desc:'O teste que consagra ou mata a unificação: grafo aleatório (seed na aba Debug) na escala alvo — dezenas a ~centena de nós + dezenas de arestas, tudo ligado: atrator central, colisão nó×nó, conectividade e (opcional) arestas-CADEIA com contorno recíproco. Meça ms/tick, ticks até assentar e cruzamentos. Nota: este sandbox é O(N²) sem broad-phase — o engine real (spatial hash) custa MENOS; o que transfere é a TENDÊNCIA (estabilidade, convergência, qualidade), não o número absoluto.',
+  params:[param('nodes','nº de nós','range',{min:10,max:120,step:5,def:60}),
+    param('edges','nº de arestas','range',{min:0,max:60,step:2,def:24}),
+    param('emode','arestas','select',{options:[['spring','mola reta (só layout)'],['chain','cadeia com contorno (routing junto)']],def:'spring'}),
+    param('kedge','mola de conectividade','range',{min:0,max:.2,step:.005,def:.03}),
+    param('rest','rest length','range',{min:60,max:240,step:10,def:140}),
+    param('damp','damping','range',{min:.5,max:.95,step:.01,def:.85}),
+    param('sub','sub-steps','range',{min:1,max:8,step:1,def:2})],
+  rebuildOn:['nodes','edges','emode'],
+  init(w,p){ srand(view.seed||1);
+    w._nodes=[]; for(let i=0;i<p.nodes;i++){ const a=rng()*Math.PI*2, R=60+rng()*Math.max(260,p.nodes*4);
+      w._nodes.push(addBody(w,{x:Math.cos(a)*R,y:Math.sin(a)*R,hw:18+rng()*26,hh:12+rng()*14,cl:L('n'),color:'#6cf',role:'node'})); }
+    w._edges=[]; const seen=new Set(); let guard=0;
+    while(w._edges.length<p.edges&&guard++<p.edges*20){ const a=Math.floor(rng()*p.nodes), b=Math.floor(rng()*p.nodes);
+      if(a===b)continue; const k=Math.min(a,b)+'-'+Math.max(a,b); if(seen.has(k))continue; seen.add(k); w._edges.push([a,b]); }
+    if(p.emode==='chain'){ w._edges.forEach(([a,b],e)=>{ const ch=makeChain(w,w._nodes[a],w._nodes[b],4,3,{color:'#9ece6a'});
+      ch.forEach((bi,k2)=>w.bodies[bi].cl=L('c'+e+'_'+k2)); w.chains.push(ch); }); } },
+  forces(w,p,c){ const nodes=w._nodes;
+    for(const nb of nodes) addF(nb,-0.012*nb.x,-0.012*nb.y,'central');
+    repel(w,{profile:'linear',k:.5,pad:8});
+    w._edges.forEach(([ia,ib],e)=>{ const A=nodes[ia],B=nodes[ib];
+      const dx=B.x-A.x,dy=B.y-A.y,D=Math.hypot(dx,dy)||1e-9,f=p.kedge*(D-p.rest),ux=dx/D,uy=dy/D;
+      addF(A,ux*f,uy*f,'chain'); addF(B,-ux*f,-uy*f,'chain');
+      if(p.emode!=='chain')return;
+      const ch=w.chains[e]; const e0=w.bodies[ch[0]],e1=w.bodies[ch[ch.length-1]];
+      addF(e0,.35*(A.x-e0.x),.35*(A.y-e0.y),'attract'); addF(e1,.35*(B.x-e1.x),.35*(B.y-e1.y),'attract');
+      chainSpring(w,ch,.3,D/(ch.length-1));
+      for(let m=0;m+1<ch.length;m++){ const pq=w.bodies[ch[m]],q=w.bodies[ch[m+1]];
+        for(let ni=0;ni<nodes.length;ni++){ if(ni===ia||ni===ib)continue; const o=nodes[ni];
+          const vx=q.x-pq.x,vy=q.y-pq.y,L2=vx*vx+vy*vy||1e-9; let t=((o.x-pq.x)*vx+(o.y-pq.y)*vy)/L2; t=Math.max(0,Math.min(1,t));
+          const s=rectSDF(pq.x+vx*t,pq.y+vy*t,o); const pen=12-s.d;
+          if(pen>0){ const f2=.6*pen; addF(pq,s.nx*f2*(1-t),s.ny*f2*(1-t),'seg'); addF(q,s.nx*f2*t,s.ny*f2*t,'seg'); addF(o,-s.nx*f2*.5,-s.ny*f2*.5,'seg'); } } } });
+    if(p.emode==='chain') antiCross(w,w.chains,.6,12); },
+  opts:p=>({dt:1,damping:p.damp,cap:50}), sub:p=>p.sub,
+  metric(w,p){ if(p.emode==='chain') return {name:'cruzamentos',value:countChainCrossings(w,w.chains)};
+    let n=0; for(let a2=0;a2<w._edges.length;a2++)for(let b2=a2+1;b2<w._edges.length;b2++){
+      const [i1,j1]=w._edges[a2],[i2,j2]=w._edges[b2]; if(i1===i2||i1===j2||j1===i2||j1===j2)continue;
+      if(segsCross(w._nodes[i1],w._nodes[j1],w._nodes[i2],w._nodes[j2]))n++; } return {name:'cruzamentos',value:n}; },
+  summary(w,p){ let ov=0; const ns=w._nodes; for(let i=0;i<ns.length;i++)for(let j=i+1;j<ns.length;j++){ const a=ns[i],b=ns[j];
+      const ox=(a.hw+b.hw)-Math.abs(b.x-a.x), oy=(a.hh+b.hh)-Math.abs(b.y-a.y); if(ox>0&&oy>0) ov=Math.max(ov,Math.min(ox,oy)); }
+    return `corpos=${w.bodies.length}, overlap máx nó×nó=${ov.toFixed(1)}px (sparkline = cruzamentos)`; },
+  draw(g,w,p){ if(p.emode==='chain'){ for(const ch of w.chains) drawChain(g,w,ch); }
+    else { g.strokeStyle='rgba(158,206,106,.5)'; g.lineWidth=1.2; for(const [a,b] of w._edges){ const A=w._nodes[a],B=w._nodes[b]; g.beginPath();g.moveTo(A.x,A.y);g.lineTo(B.x,B.y);g.stroke(); } } },
+});
+
+/* ============================================================
+   STATUS por cenário (badge no menu)
+   decisivo = decide o destino do projeto · aberto = pergunta viva ·
+   decidido = decisão já encarnada no engine commitado (cenário é referência)
+   O veredito do usuário (aba Conclusão) sobrepõe o status base.
+   ============================================================ */
+const META={
+  A1:'decidido',A2:'decidido',A3:'decidido',
+  B1:'decisivo',B2:'aberto',
+  C1:'decidido',C2:'decidido',C3:'aberto',C4:'decidido',C5:'decidido',
+  D1:'decidido',D2:'aberto',
+  E1:'decidido',E2:'decidido',
+  F1:'aberto',F2:'aberto',F3:'decisivo',F4:'decidido',F5:'decisivo',
+  G1:'aberto',G2:'decisivo',G3:'aberto',G4:'decisivo',G5:'decidido',
+  H1:'aberto',
+  I1:'decisivo',I2:'decisivo',
+};
+/* conclusões persistidas (aba Conclusão): {id:{verdict,notes}} */
+const NOTES_KEY='tensegrams:playground-notes';
+let NOTES={}; try{ NOTES=JSON.parse(localStorage.getItem(NOTES_KEY)||'{}'); }catch(e){ NOTES={}; }
+function saveNotes(){ try{ localStorage.setItem(NOTES_KEY,JSON.stringify(NOTES)); }catch(e){} }
+
+/* ============================================================
+   DRAW helpers (debug overlays)
+   ============================================================ */
+function drawAttractor(g,a){ g.save(); g.strokeStyle='#5ccfe6'; g.fillStyle='#5ccfe6'; g.setLineDash([4,4]);
+  if(a.type==='point'){ g.beginPath();g.arc(a.x,a.y,6,0,7);g.stroke(); drawHandle(g,a); }
+  else if(a.type==='line'){ const dx=Math.cos(a.ang)*1000,dy=Math.sin(a.ang)*1000; g.beginPath();g.moveTo(a.x-dx,a.y-dy);g.lineTo(a.x+dx,a.y+dy);g.stroke(); drawHandle(g,{x:a.x+Math.cos(a.ang)*80,y:a.y+Math.sin(a.ang)*80}); drawHandle(g,{x:a.x,y:a.y}); }
+  else if(a.type==='region'){ g.strokeRect(a.x0,a.y0,a.x1-a.x0,a.y1-a.y0); }
+  g.setLineDash([]); g.restore(); }
+function drawHandle(g,h){ g.save(); g.fillStyle='#ffcb6b'; g.translate(h.x,h.y); g.rotate(Math.PI/4); g.fillRect(-5,-5,10,10); g.restore(); }
+function drawChain(g,w,chain){ if(!chain.length)return; const col=w.bodies[chain[0]]?.color||'#9ece6a';
+  g.save(); g.strokeStyle=col; g.lineWidth=2; g.beginPath();
+  for(let i=0;i<chain.length;i++){ const b=w.bodies[chain[i]]; if(i===0)g.moveTo(b.x,b.y);else g.lineTo(b.x,b.y);} g.stroke();
+  g.fillStyle=col; for(const i of chain){ const b=w.bodies[i]; g.beginPath();g.arc(b.x,b.y,3,0,7);g.fill(); } g.restore(); }
+function drawChainCurve(g,w,chain){ g.save(); g.strokeStyle='#9ece6a'; g.lineWidth=2; const pts=chain.map(i=>w.bodies[i]);
+  g.beginPath(); g.moveTo(pts[0].x,pts[0].y);
+  for(let i=0;i<pts.length-1;i++){ const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
+    for(let t=0;t<1;t+=.2){ const t2=t*t,t3=t2*t;
+      const x=0.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3);
+      const y=0.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3);
+      g.lineTo(x,y); } }
+  g.lineTo(pts[pts.length-1].x,pts[pts.length-1].y); g.stroke();
+  g.fillStyle='#5a7'; for(const b of pts){ g.beginPath();g.arc(b.x,b.y,3,0,7);g.fill(); } g.restore(); }
+
+/* ============================================================
+   UI / LOOP
+   ============================================================ */
+const cv=document.getElementById('cv'), g=cv.getContext('2d');
+const hud=document.getElementById('hud');
+let W=0,H=0; const stageEl=document.getElementById('stage');
+function resize(){ const r=stageEl.getBoundingClientRect(); // mede o PAI (não depende do canvas) → sem feedback/stretch
+  W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height)); cv.width=W; cv.height=H; }
+window.addEventListener('resize',resize);
+new ResizeObserver(resize).observe(stageEl);
+
+let current=null, P={}, w=null, dbg={forces:true,forcesEach:false,layers:true,sdf:true};
+let dragTarget=null; const mouse={x:0,y:0,down:false};
+const view={zoom:1, pad:0, count:0, central:1, seed:1}; // zoom, pad/gap, nº de elementos, multiplicador GLOBAL da força central (0 = desliga), seed do PRNG
+/* instrumentação: pausa/passo, custo por tick, detecção de assentamento, séries p/ sparkline */
+let paused=false, stepOnceFlag=false, msTick=0;
+let tickCount=0, settleTicks=null, settleRun=0;
+const HIST={ke:[],metric:[],metricName:''};
+function resetInstr(){ tickCount=0; settleTicks=null; settleRun=0; HIST.ke.length=0; HIST.metric.length=0; }
+let zoomCtl=null; // ref do slider de zoom (para sincronizar com a roda do mouse)
+
+/* visibilidade dos painéis sobrepostos ao canvas (HUD / sparklines / dica), persistida */
+const SHOW_KEY='tensegrams:playground-show';
+let show={hud:true,spark:true,hint:true};
+try{ show=Object.assign(show, JSON.parse(localStorage.getItem(SHOW_KEY)||'{}')); }catch(e){}
+function applyShow(){
+  document.getElementById('hud').style.display=show.hud?'':'none';
+  document.getElementById('hint').style.display=show.hint?'':'none';
+  for(const b of document.querySelectorAll('#stagetoggles button')) b.classList.toggle('on', !!show[b.dataset.panel]);
+  // sparklines são desenhadas no canvas — o guard fica no render()
+}
+(function(){ for(const b of document.querySelectorAll('#stagetoggles button'))
+  b.onclick=()=>{ const k=b.dataset.panel; show[k]=!show[k];
+    try{ localStorage.setItem(SHOW_KEY,JSON.stringify(show)); }catch(e){} applyShow(); }; applyShow(); })();
+
+/* recolher/expandir os frames auxiliares (menu de experimentos e parâmetros do live), persistido */
+const LAYOUT_KEY='tensegrams:playground-layout';
+let layout={sidebar:true,controls:true};
+try{ layout=Object.assign(layout, JSON.parse(localStorage.getItem(LAYOUT_KEY)||'{}')); }catch(e){}
+function applyLayout(){ const app=document.getElementById('app');
+  app.classList.toggle('nosidebar', !layout.sidebar);
+  app.classList.toggle('nocontrols', !layout.controls);
+  const tb=document.getElementById('toggleSidebar'); if(tb) tb.title=(layout.sidebar?'recolher':'expandir')+' o menu de experimentos';
+  resize(); } // canvas re-mede o stage (largura/altura mudam ao recolher um frame)
+function setLayout(k,v){ layout[k]=v; try{ localStorage.setItem(LAYOUT_KEY,JSON.stringify(layout)); }catch(e){} applyLayout(); }
+document.getElementById('toggleSidebar').onclick=()=>setLayout('sidebar',!layout.sidebar);
+document.getElementById('reopenControls').onclick=()=>setLayout('controls',true);
+
+function buildMenu(){ const menu=document.getElementById('menu'); menu.innerHTML=''; let lastGrp=null;
+  for(const s of SCN){ if(s.group!==lastGrp){ lastGrp=s.group; const gd=document.createElement('div'); gd.className='grp'; gd.textContent=s.group; menu.appendChild(gd); }
+    const d=document.createElement('div'); d.className='item'; d.dataset.id=s.id;
+    // badge: veredito do usuário (adotado/rejeitado) sobrepõe o status base (decisivo/aberto/decidido)
+    const note=NOTES[s.id]; const st=(note&&note.verdict&&note.verdict!=='aberto')?note.verdict:(META[s.id]||'aberto');
+    d.innerHTML=`${s.title}<span class="badge ${st}">${st}</span>`;
+    if(current&&current.id===s.id)d.classList.add('active');
+    d.onclick=()=>load(s.id); menu.appendChild(d); } }
+function load(id){ current=SCN.find(s=>s.id===id);
+  document.querySelectorAll('.item').forEach(e=>e.classList.toggle('active',e.dataset.id===id));
+  document.getElementById('scTitle').textContent=current.title;
+  document.getElementById('scDesc').textContent=current.desc;
+  P={}; for(const pr of current.params) P[pr.key]=pr.def;
+  view.zoom=1; view.pad=0; view.count=current.defaultCount||0; view.central=1; // reset da vista a cada cenário
+  rebuild(); buildControls(); updatePrompt(); }
+function rebuild(){ srand(view.seed||1); w=world(); current.init(w,P); resetInstr(); }
+let activeTab='params'; // aba persistida entre cenários
+function buildControls(){ const c=document.getElementById('controls'); c.innerHTML='';
+  const bar=document.createElement('div'); bar.className='tabbar'; c.appendChild(bar);
+  const panes={}, tabBtns={};
+  function setTab(id){ if(!panes[id])id='params'; activeTab=id; for(const k in panes) panes[k].style.display=k===id?'block':'none'; for(const k in tabBtns) tabBtns[k].classList.toggle('active',k===id); }
+  function mkPane(id,label){ const btn=document.createElement('button'); btn.textContent=label; btn.onclick=()=>setTab(id); bar.appendChild(btn); tabBtns[id]=btn;
+    const pane=document.createElement('div'); pane.className='tabpane'; pane.style.display='none'; panes[id]=pane; c.appendChild(pane); return pane; }
+  const pP=mkPane('params','Parâmetros'), pV=mkPane('view','Vista'), pD=mkPane('debug','Debug'), pC=mkPane('conc','Conclusão');
+  // botão de recolher o painel de parâmetros (à direita do tabbar)
+  const collapseBtn=document.createElement('button'); collapseBtn.className='collapsebtn'; collapseBtn.textContent='▾';
+  collapseBtn.title='recolher o painel de parâmetros'; collapseBtn.onclick=()=>setLayout('controls',false); bar.appendChild(collapseBtn);
+  function gslider(pane,label,key,min,max,step,fmt){ const row=document.createElement('div'); row.className='row';
+    const lab=document.createElement('label'); lab.textContent=label; row.appendChild(lab);
+    const inp=document.createElement('input'); inp.type='range'; inp.min=min;inp.max=max;inp.step=step;inp.value=view[key];
+    const val=document.createElement('span'); val.className='val'; const show=()=>val.textContent=(fmt?fmt(view[key]):view[key].toFixed(2)); show();
+    inp.oninput=()=>{ view[key]=parseFloat(inp.value); show(); };
+    row.appendChild(inp); row.appendChild(val); pane.appendChild(row); return {inp,val}; }
+  // ---- Parâmetros ----
+  for(const pr of current.params){ const row=document.createElement('div'); row.className='row';
+    const lab=document.createElement('label'); lab.textContent=pr.label; row.appendChild(lab);
+    if(pr.type==='range'){ const inp=document.createElement('input'); inp.type='range'; inp.min=pr.min;inp.max=pr.max;inp.step=pr.step;inp.value=P[pr.key];
+      const val=document.createElement('span'); val.className='val'; val.textContent=P[pr.key];
+      inp.oninput=()=>{ P[pr.key]=parseFloat(inp.value); val.textContent=P[pr.key]; onParam(pr.key); };
+      row.appendChild(inp); row.appendChild(val);
+    } else if(pr.type==='select'){ const sel=document.createElement('select');
+      for(const [v,t] of pr.options){ const o=document.createElement('option'); o.value=v;o.textContent=t; if(v===P[pr.key])o.selected=true; sel.appendChild(o);}
+      sel.onchange=()=>{ P[pr.key]=sel.value; onParam(pr.key); };
+      const sp=document.createElement('span'); row.appendChild(sel); row.appendChild(sp); }
+    pP.appendChild(row); }
+  if(!current.params.length){ const e=document.createElement('div'); e.style.color='var(--mut)'; e.style.padding='4px 0'; e.textContent='(sem parâmetros próprios)'; pP.appendChild(e); }
+  // ---- Vista ----
+  zoomCtl=gslider(pV,'zoom (câmera)','zoom',0.3,3,0.05);
+  gslider(pV,'força central','central',0,3,0.05); // SEMPRE presente; 0 = desliga a força central
+  if(current.defaultCount){ const row=document.createElement('div'); row.className='row';
+    const lab=document.createElement('label'); lab.textContent='nº de elementos'; row.appendChild(lab);
+    const inp=document.createElement('input'); inp.type='range'; inp.min=2;inp.max=16;inp.step=1;inp.value=view.count;
+    const val=document.createElement('span'); val.className='val'; val.textContent=view.count;
+    inp.oninput=()=>{ view.count=parseInt(inp.value); val.textContent=view.count; rebuild(); };
+    row.appendChild(inp); row.appendChild(val); pV.appendChild(row); }
+  if(w && w.bodies.length && !current.params.some(p=>/^(pad|gap)/.test(p.key))) gslider(pV,'zona de força (gap)','pad',0,40,1,v=>v.toFixed(0));
+  // ---- Debug ----
+  const tg=document.createElement('div'); tg.className='toggles';
+  for(const [k,lbl] of [['forces','aceleração resultante (Δv/dt, c/ damping)'],['forcesEach','forças individuais (contributors)'],['layers','cor por camada'],['sdf','zona de força']]){
+    const l=document.createElement('label'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=dbg[k];
+    cb.onchange=()=>{ dbg[k]=cb.checked; }; l.appendChild(cb); l.appendChild(document.createTextNode(lbl)); tg.appendChild(l); }
+  pD.appendChild(tg);
+  const bar2=document.createElement('div'); bar2.className='barrow';
+  const reset=document.createElement('button'); reset.textContent='Reset'; reset.onclick=()=>{ rebuild(); }; bar2.appendChild(reset);
+  const kick=document.createElement('button'); kick.textContent='Chacoalhar'; kick.onclick=()=>{ resetInstr();
+    for(const b of w.bodies){ if(!b.fixed){b.vx+=(rng()-.5)*40;b.vy+=(rng()-.5)*40;} } }; bar2.appendChild(kick); // rng com seed → reprodutível
+  const pauseB=document.createElement('button'); pauseB.textContent=paused?'Retomar':'Pausar';
+  pauseB.onclick=()=>{ paused=!paused; pauseB.textContent=paused?'Retomar':'Pausar'; }; bar2.appendChild(pauseB);
+  const stepB=document.createElement('button'); stepB.textContent='Passo';
+  stepB.onclick=()=>{ paused=true; pauseB.textContent='Retomar'; stepOnceFlag=true; }; bar2.appendChild(stepB);
+  pD.appendChild(bar2);
+  // seed do PRNG (Chacoalhar + cenários aleatórios, ex.: I2)
+  const srow=document.createElement('div'); srow.className='row';
+  const slab=document.createElement('label'); slab.textContent='seed (PRNG)'; srow.appendChild(slab);
+  const sinp=document.createElement('input'); sinp.type='text'; sinp.value=view.seed;
+  sinp.onchange=()=>{ view.seed=parseInt(sinp.value)||1; sinp.value=view.seed; rebuild(); };
+  const sval=document.createElement('span'); srow.appendChild(sinp); srow.appendChild(sval); pD.appendChild(srow);
+  // ---- Conclusão (veredito + notas persistidos por cenário) ----
+  const note=NOTES[current.id]||{verdict:'aberto',notes:''};
+  const base=document.createElement('div'); base.style.color='var(--mut)'; base.style.margin='2px 0 8px';
+  base.textContent=`status base: ${META[current.id]||'aberto'} — o veredito abaixo sobrepõe o badge do menu`; pC.appendChild(base);
+  const vrow=document.createElement('div'); vrow.className='row';
+  const vlab=document.createElement('label'); vlab.textContent='veredito'; vrow.appendChild(vlab);
+  const vsel=document.createElement('select');
+  for(const [v,t] of [['aberto','aberto (sem conclusão)'],['adotado','adotado'],['rejeitado','rejeitado']]){
+    const o=document.createElement('option'); o.value=v; o.textContent=t; if(v===note.verdict)o.selected=true; vsel.appendChild(o); }
+  vsel.onchange=()=>{ const n=NOTES[current.id]||(NOTES[current.id]={}); n.verdict=vsel.value; saveNotes(); buildMenu(); updatePrompt(); };
+  vrow.appendChild(vsel); vrow.appendChild(document.createElement('span')); pC.appendChild(vrow);
+  const ta=document.createElement('textarea'); ta.id='notes'; ta.placeholder='Notas do experimento (o que observou, parâmetros bons, por quê) — vão para o prompt copiável.';
+  ta.value=note.notes||'';
+  ta.oninput=()=>{ const n=NOTES[current.id]||(NOTES[current.id]={}); n.notes=ta.value; saveNotes(); updatePrompt(); };
+  pC.appendChild(ta);
+  setTab(activeTab);
+}
+function onParam(key){ if(current.onParam) current.onParam(w,P,rebuild);
+  if(current.rebuildOn && current.rebuildOn.includes(key)) rebuild();
+  else resetInstr(); // parâmetro mudou → medição anterior (settle/ms/históricos) fica inválida
+  updatePrompt(); }
+
+/* loop */
+function frame(){ requestAnimationFrame(frame); if(!current||!w) return;
+  const o=current.opts?current.opts(P):{dt:1,damping:.85};
+  const sub=current.sub?current.sub(P):1; const dt=(o.dt??1)/sub;
+  if(!paused||stepOnceFlag){ stepOnceFlag=false;
+    const t0=performance.now();
+    for(const b of w.bodies){ b._pvx=b.vx; b._pvy=b.vy; } // p/ aceleração real (Δv/dt)
+    for(let s=0;s<sub;s++){
+      clearF(w);
+      current.forces?.(w,P,{dt,alpha:w.alpha});
+      applyDrag(w);
+      integrate(w,Object.assign({},o,{dt}));
+      current.constraints?.(w,P,{dt});
+    }
+    current.topo?.(w,P,{});
+    // resultante exibida = aceleração REAL do tick (inclui damping/cap/constraints),
+    // não a soma das forças dos contributors — senão a seta "segue a velocidade"
+    // quando o freio dominante é o damping do integrador
+    { const dtT=o.dt??1; for(const b of w.bodies){ b._ax=(b.vx-(b._pvx??b.vx))/dtT; b._ay=(b.vy-(b._pvy??b.vy))/dtT; } }
+    msTick=msTick*0.9+(performance.now()-t0)*0.1; // EMA do custo físico por tick
+    tickCount++;
+    const ke=KE(w);
+    // assentamento: KE POR CORPO MÓVEL abaixo do limiar por 30 ticks seguidos (limiar absoluto
+    // não escala p/ cenas grandes). 1e-3/corpo ⇒ |v|≲0.045px/tick: sub-pixel, parado na prática.
+    let movable=0; for(const b of w.bodies) if(!b.fixed) movable++;
+    if(settleTicks==null){ if(ke/Math.max(1,movable)<1e-3&&!dragTarget){ settleRun++; if(settleRun>=30) settleTicks=tickCount-30; } else settleRun=0; }
+    HIST.ke.push(ke); if(HIST.ke.length>240)HIST.ke.shift();
+    if(current.metric){ const m=current.metric(w,P); HIST.metricName=m.name;
+      HIST.metric.push(m.value); if(HIST.metric.length>240)HIST.metric.shift(); }
+  }
+  render(o,sub);
+}
+function applyDrag(w){ if(!dragTarget)return; const t=dragTarget;
+  if(t.body){ // drag cinemático: o corpo segue o cursor (fixado), sem mola rígida → sem flicker/explosão. Vizinhos ainda são empurrados por colisão.
+    t.body.x=mouse.x; t.body.y=mouse.y; t.body.vx=0; t.body.vy=0; }
+  else if(t.handle){ t.handle.x=mouse.x; t.handle.y=mouse.y; }
+  else if(t.attr){ if(t.attr.type==='region'){ const dx=mouse.x-(t.attr.x0+t.attr.x1)/2, dy=mouse.y-(t.attr.y0+t.attr.y1)/2; t.attr.x0+=dx;t.attr.x1+=dx;t.attr.y0+=dy;t.attr.y1+=dy; } else { t.attr.x=mouse.x;t.attr.y=mouse.y; } }
+}
+function render(o,sub){ g.clearRect(0,0,W,H); g.save(); g.translate(W/2,H/2); g.scale(view.zoom,view.zoom);
+  // grid (cobre a área de mundo visível conforme o zoom)
+  const hw=(W/2)/view.zoom, hh=(H/2)/view.zoom;
+  g.strokeStyle='rgba(255,255,255,.03)'; g.lineWidth=1/view.zoom;
+  for(let x=-Math.ceil(hw/40)*40;x<hw;x+=40){g.beginPath();g.moveTo(x,-hh);g.lineTo(x,hh);g.stroke();}
+  for(let y=-Math.ceil(hh/40)*40;y<hh;y+=40){g.beginPath();g.moveTo(-hw,y);g.lineTo(hw,y);g.stroke();}
+  // scenario extras (attractors, chains)
+  current.draw?.(g,w,P,dbg);
+  // zona de força externa (colisor soft): usa o pad do cenário se houver, senão o pad global
+  const padParam=current.params.find(p=>p.key==='pad'||p.key==='gap');
+  const zonePad=padParam?(P[padParam.key]||0):view.pad;
+  // bodies
+  for(const b of w.bodies){
+    if(b.rect){ const zp=(b.pad??zonePad); // corpo retangular (forma do produto)
+      if(dbg.sdf&&zp>0&&!b.fixed){ g.fillStyle='rgba(92,207,230,.10)'; g.fillRect(b.x-b.hw-zp,b.y-b.hh-zp,(b.hw+zp)*2,(b.hh+zp)*2);
+        g.strokeStyle='rgba(92,207,230,.40)'; g.setLineDash([3,3]); g.strokeRect(b.x-b.hw-zp,b.y-b.hh-zp,(b.hw+zp)*2,(b.hh+zp)*2); g.setLineDash([]); }
+      g.fillStyle=dbg.layers&&b.cl?layerColor(b):b.color; g.globalAlpha=b.fixed?.55:.9;
+      g.fillRect(b.x-b.hw,b.y-b.hh,b.hw*2,b.hh*2); g.globalAlpha=1;
+      g.strokeStyle=b.fixed?'#888':'rgba(0,0,0,.35)'; g.strokeRect(b.x-b.hw,b.y-b.hh,b.hw*2,b.hh*2); continue; }
+    if(b.role==='target'||b.role==='obstacle'||b.r>30){ g.fillStyle=b.color; g.globalAlpha=.5; g.beginPath();g.arc(b.x,b.y,b.r,0,7);g.fill(); g.globalAlpha=1; g.strokeStyle=b.color;g.stroke(); continue; }
+    if(dbg.sdf){ const zr=b.r+(b.pad??zonePad); // ÁREA da zona de força (controlada pelo toggle "zona de força"); por-elemento se b.pad existir
+      g.fillStyle='rgba(92,207,230,.10)'; g.beginPath();g.arc(b.x,b.y,zr,0,7);g.fill();
+      g.strokeStyle='rgba(92,207,230,.40)'; g.setLineDash([3,3]); g.beginPath();g.arc(b.x,b.y,zr,0,7);g.stroke(); g.setLineDash([]); }
+    g.beginPath();g.arc(b.x,b.y,b.r,0,7); g.fillStyle=dbg.layers&&b.cl?layerColor(b):b.color; g.globalAlpha=b.fixed?.6:.9; g.fill(); g.globalAlpha=1;
+    if(b.fixed){ g.strokeStyle='#888'; g.stroke(); } }
+  // forças INDIVIDUAIS: raio do centro até a borda; ESPESSURA ∝ intensidade; direção = direção da força; zero → some.
+  // A ponta recua lw/2 para que o cap arredondado termine EXATAMENTE na borda e nunca vaze do nó;
+  // espessura limitada a ~0,5·r para não ficar bulboso quando a força é grande.
+  if(dbg.forcesEach){ g.lineCap='round';
+    const drawRay=(b,ux,uy,m,col)=>{ if(m<1e-4)return; const lw=Math.min(m*3,b.r*0.5); g.lineWidth=lw; g.strokeStyle=col;
+      const re=Math.max(b.r-lw/2, lw/2+1); // recua a ponta; o cap (raio lw/2) tangencia a borda por dentro
+      g.beginPath(); g.moveTo(b.x,b.y); g.lineTo(b.x+ux*re,b.y+uy*re); g.stroke(); };
+    for(const b of w.bodies){ if(b.fixed)continue;
+      if(b._f) for(const f of b._f){ const m=Math.hypot(f.fx,f.fy); if(m<1e-4)continue; drawRay(b,f.fx/m,f.fy/m,m,FKIND[f.kind]||'#fff'); }
+      // arrasto viscoso do integrador (damping): a força de frenagem que não está em b._f — sempre -v
+      const sp=Math.hypot(b.vx,b.vy), dv=sp*(1-(o.damping??.85))/(o.dt??1);
+      if(dv>1e-3) drawRay(b,-b.vx/sp,-b.vy/sp,dv,FKIND.drag); }
+    g.lineCap='butt'; }
+  // RESULTANTE: aceleração real do tick (Δv/dt — inclui damping; aponta contra a velocidade ao frear).
+  // Filtro "fade por módulo": SEM piso de comprimento — perto do equilíbrio a direção de um vetor
+  // quase-nulo é indefinida, então a seta ENCOLHE e some (comprimento E opacidade ∝ módulo) em vez
+  // de tremular em tamanho cheio em direções aleatórias. Deadband descarta o sub-pixel.
+  if(dbg.forces){ g.lineWidth=2.5/view.zoom; g.strokeStyle='#ffffff'; for(const b of w.bodies){ if(b.fixed)continue;
+    const fx=b._ax??b.fx, fy=b._ay??b.fy;
+    const m=Math.hypot(fx,fy); if(m<0.05)continue; const ux=fx/m,uy=fy/m; const x0=b.x+ux*b.r,y0=b.y+uy*b.r;
+    const len=Math.min(m*8,150); g.globalAlpha=Math.max(.12,Math.min(m/1.5,1));
+    arrow(g,x0,y0,x0+ux*len,y0+uy*len); } g.globalAlpha=1; g.lineWidth=1; }
+  g.restore();
+  // sparklines (coordenadas de tela): KE sempre; métrica do cenário quando declarada. Toggle "gráficos".
+  if(show.spark){ drawSpark(W-258,10,248,42,HIST.ke,'#5ccfe6','KE');
+    if(HIST.metric.length)drawSpark(W-258,60,248,42,HIST.metric,'#ffcb6b',HIST.metricName); }
+  // HUD
+  const ke=KE(w); const extra=current.summary?'\n'+current.summary(w,P):'';
+  let nmov=0; for(const b of w.bodies) if(!b.fixed) nmov++;
+  hud.textContent=`corpos: ${w.bodies.length}   sub-steps: ${sub}   ms/tick: ${msTick.toFixed(2)}${paused?'   ⏸ pausado':''}\n`+
+    `KE: ${ke.toFixed(4)} ${ke/Math.max(1,nmov)>8?'⚠ instável':''}   ${settleTicks!=null?`assentou em ${settleTicks} ticks`:`tick ${tickCount} (não assentado)`}`+extra;
+}
+/* sparkline minimalista no canto do stage (escala automática pelo máximo da janela) */
+function drawSpark(x,y,wd,ht,data,color,label){ if(data.length<2)return;
+  g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(x,y,wd,ht);
+  g.strokeStyle='rgba(255,255,255,.15)'; g.strokeRect(x,y,wd,ht);
+  let mx=1e-9; for(const v of data) if(v>mx)mx=v;
+  g.strokeStyle=color; g.lineWidth=1; g.beginPath();
+  for(let i=0;i<data.length;i++){ const px=x+i/(data.length-1)*wd, py=y+ht-2-(data[i]/mx)*(ht-4);
+    if(i===0)g.moveTo(px,py); else g.lineTo(px,py); } g.stroke();
+  g.fillStyle='rgba(214,222,235,.8)'; g.font='10px monospace';
+  g.fillText(`${label}  máx ${mx<10?mx.toFixed(2):mx.toFixed(0)}  atual ${data[data.length-1]<10?data[data.length-1].toFixed(2):data[data.length-1].toFixed(0)}`,x+5,y+11); }
+function arrow(g,x0,y0,x1,y1){ const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy); if(L<2)return; g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+  const a=Math.atan2(dy,dx); g.beginPath();g.moveTo(x1,y1);g.lineTo(x1-6*Math.cos(a-.4),y1-6*Math.sin(a-.4));g.moveTo(x1,y1);g.lineTo(x1-6*Math.cos(a+.4),y1-6*Math.sin(a+.4));g.stroke(); }
+const LCOL={}; function layerColor(b){ const key=[...(b.cl||[])].join(); if(!LCOL[key]){ const h=(Object.keys(LCOL).length*67)%360; LCOL[key]=`hsl(${h},65%,60%)`; } return LCOL[key]; }
+
+/* mouse */
+function toWorld(ev){ const r=cv.getBoundingClientRect(); return {x:(ev.clientX-r.left-W/2)/view.zoom, y:(ev.clientY-r.top-H/2)/view.zoom}; }
+cv.addEventListener('mousedown',ev=>{ const m=toWorld(ev); mouse.x=m.x;mouse.y=m.y;mouse.down=true; dragTarget=pick(m);
+  if(dragTarget){ settleTicks=null; settleRun=0; } // perturbação → re-mede o assentamento
+  if(dragTarget&&dragTarget.body){ dragTarget.wasFixed=dragTarget.body.fixed; dragTarget.body.fixed=true; } }); // fixa enquanto arrasta
+window.addEventListener('mousemove',ev=>{ const m=toWorld(ev); mouse.x=m.x;mouse.y=m.y; });
+window.addEventListener('mouseup',()=>{ mouse.down=false;
+  if(dragTarget&&dragTarget.body){ dragTarget.body.fixed=dragTarget.wasFixed; dragTarget.body.vx=0; dragTarget.body.vy=0; } // solta sem velocidade → assenta liso
+  dragTarget=null; });
+cv.addEventListener('wheel',ev=>{ ev.preventDefault(); // roda do mouse = zoom (sincroniza o slider)
+  view.zoom=Math.max(0.3,Math.min(3, view.zoom*(ev.deltaY<0?1.1:1/1.1)));
+  if(zoomCtl){ zoomCtl.inp.value=view.zoom; zoomCtl.val.textContent=view.zoom.toFixed(2); } },{passive:false});
+function pick(m){ // alças primeiro, depois atratores, depois corpos
+  for(const h of w.handles){ if(Math.hypot(h.x-m.x,h.y-m.y)<14) return {handle:h}; }
+  for(const a of w.attractors){ if(a.type==='point'||a.type==='line'){ if(Math.hypot(a.x-m.x,a.y-m.y)<16) return {attr:a}; } else if(a.type==='region'){ const cx=(a.x0+a.x1)/2,cy=(a.y0+a.y1)/2; if(Math.hypot(cx-m.x,cy-m.y)<30) return {attr:a}; } }
+  let best=null,bd=1e9; for(const b of w.bodies){ const d=Math.hypot(b.x-m.x,b.y-m.y); if(d<b.r+6&&d<bd){bd=d;best=b;} }
+  return best?{body:best}:null;
+}
+
+/* prompt output (resumo p/ realimentar a discussão) */
+function updatePrompt(){ if(!current)return; const parts=[];
+  for(const pr of current.params){ const v=P[pr.key]; if(v!==pr.def) parts.push(`${pr.label}=${v}`); }
+  const note=NOTES[current.id];
+  const verdict=(note&&note.verdict)||'aberto';
+  const met=[`ms/tick=${msTick.toFixed(2)}`,
+    settleTicks!=null?`assentou em ${settleTicks} ticks`:`não assentado (tick ${tickCount})`,
+    `seed=${view.seed}`];
+  if(HIST.metric.length) met.push(`${HIST.metricName}=${HIST.metric[HIST.metric.length-1].toFixed(2)}`);
+  const txt=`Cenário ${current.id} — ${current.title} [status: ${META[current.id]||'aberto'}; veredito: ${verdict}]\n`+
+    (parts.length?`Parâmetros não-default: ${parts.join(', ')}\n`:`(parâmetros default)\n`)+
+    `Métricas: ${met.join(', ')}\n`+
+    `Observação: ${current.summary?current.summary(w,P):'(descreva o que observou: estável? overlap? como assentou?)'}`+
+    (note&&note.notes?`\nNotas: ${note.notes}`:'');
+  document.getElementById('prompt').textContent=txt; }
+document.getElementById('copy').onclick=()=>{ navigator.clipboard.writeText(document.getElementById('prompt').textContent);
+  const b=document.getElementById('copy'); const t=b.textContent; b.textContent='Copiado!'; setTimeout(()=>b.textContent=t,1200); };
+
+/* boot */
+// splitter: arrasta para redimensionar o painel de controles (e ver melhor a simulação)
+(function(){ const sp=document.getElementById('splitter'), ctl=document.getElementById('controls');
+  sp.addEventListener('mousedown',e=>{ e.preventDefault(); const sy=e.clientY, sh=ctl.offsetHeight;
+    function mv(ev){ ctl.style.height=Math.max(70,Math.min(window.innerHeight-160, sh-(ev.clientY-sy)))+'px'; }
+    function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); }); })();
+resize(); applyLayout(); buildMenu(); load('A1'); frame();
+setInterval(()=>{ if(current) updatePrompt(); },800); // métricas vivas no prompt mesmo sem summary
+</script>
+</body>
+</html>
