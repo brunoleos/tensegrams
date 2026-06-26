@@ -2,7 +2,7 @@
 id: ADR-0012
 date: 2026-06-10
 status: accepted
-supersedes: null
+supersedes: ADR-0005
 superseded_by: null
 affects_features: [F-0017]
 related: [ADR-0009, ADR-0010]

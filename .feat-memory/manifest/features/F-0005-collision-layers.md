@@ -42,7 +42,7 @@ acceptance:
     trigger: "dois elementos se sobrepõem mas não compartilham nenhum layer"
     response: "a sobreposição é tolerada sem erro (não há colisão declarada)"
 depends_on: [F-0001, F-0002]
-decisions: [ADR-0005]
+decisions: [ADR-0011]
 ---
 
 # F-0005 · Collision layers

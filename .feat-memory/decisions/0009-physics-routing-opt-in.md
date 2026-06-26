@@ -5,11 +5,28 @@ status: accepted
 supersedes: null
 superseded_by: null
 affects_features: [F-0017]
-related: [ADR-0005]
+related: [ADR-0013, ADR-0012]
 tags: [routing]
 ---
 
-# ADR-0009 · Solver físico de routing é opt-in; algébrico permanece default
+# ADR-0009 · Engine de routing: plugins co-iguais, sem default privilegiado
+
+> **Atualização (2026-06-18).** O enquadramento original ("algébrico é o default
+> de produção; físico é opt-in que um dia vira padrão") foi revisto:
+>
+> - **Não há default privilegiado por design.** Algébrico e físico são plugins
+>   co-iguais sob a mesma arquitetura de routing (ADR-0013). Enquanto o algébrico
+>   é o único engine de routing maduro, ele permanece como **fallback pragmático
+>   transitório** quando `routing.engine` não é especificado — não como "o
+>   default" conceitual.
+> - **O solver físico de routing ANTERIOR ([src/routing/physics/](src/routing/physics/),
+>   F-0017) está `deprecated`.** Ele não será promovido a padrão; será
+>   **substituído** pelo routing do **motor físico unificado** ([src/physics/](src/physics/)),
+>   onde arestas e nós são corpos do mesmo simulador (ADR-0012, Fase 4).
+> - Quando a Fase 4 entregar routing no motor unificado, o `src/routing/physics`
+>   é removido e **o ADR-0012 supersede este ADR** (`superseded_by`).
+>
+> O texto abaixo registra o estado e o raciocínio originais (2026-06-02).
 
 ## Contexto
 
@@ -24,7 +41,7 @@ caro e ainda em amadurecimento.
 
 O solver físico é **opt-in** via `routing.engine: physics` na config. O roteador
 **algébrico permanece o default** em produção. Ambos vivem como plugins sob a
-mesma arquitetura de routing (ADR-0005) e usam as mesmas collision tags (F-0005).
+mesma arquitetura de routing (ADR-0013) e usam as mesmas collision tags (F-0005).
 Ver F-0017.
 
 ## Consequências

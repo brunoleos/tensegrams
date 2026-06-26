@@ -2,9 +2,9 @@
 id: ADR-0011
 date: 2026-06-10
 status: accepted
-supersedes: null
+supersedes: ADR-0005
 superseded_by: null
-affects_features: []
+affects_features: [F-0005]
 related: [ADR-0010]
 tags: [physics, collision]
 ---

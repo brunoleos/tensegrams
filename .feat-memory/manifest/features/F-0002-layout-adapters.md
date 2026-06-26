@@ -40,7 +40,7 @@ acceptance:
       e compartilha o modelo de força base (atrator central + separação só
       por collision layers)
 depends_on: [F-0001]
-decisions: [ADR-0005]
+decisions: [ADR-0013, ADR-0010]
 ---
 
 # F-0002 · Layout adapters pluggáveis

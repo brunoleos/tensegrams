@@ -1,7 +1,7 @@
 ---
 id: F-0017
 name: physics-routing
-status: shipped
+status: deprecated
 introduced: 2026-06-02
 user_value: >
   Optar (via config `routing.engine: physics`) por um roteamento força-dirigido
@@ -40,10 +40,19 @@ acceptance:
     pattern: ubiquitous
     requirement: "o default permanece o roteador algébrico; physics é opt-in"
 depends_on: [F-0003, F-0005]
-decisions: [ADR-0009]
+decisions: [ADR-0009, ADR-0012]
 ---
 
-# F-0017 · Solver físico de routing (opt-in)
+# F-0017 · Solver físico de routing (opt-in, deprecated)
+
+> **Deprecated (2026-06-18).** Este engine ([src/routing/physics/](src/routing/physics/))
+> é a implementação de routing físico **anterior**, separada do motor de layout.
+> Não será promovido a padrão: será **substituído** pelo routing do **motor
+> físico unificado** ([src/physics/](src/physics/)), onde arestas e nós são
+> corpos do mesmo simulador (ADR-0012, Fase 4). Continua **funcional como opt-in
+> legado** (`routing.engine: physics`, com aviso de depreciação) até a Fase 4
+> entregar routing no motor unificado — então este código e seus testes são
+> removidos e o ADR-0012 supersede o ADR-0009. Ver ADR-0009 (atualização).
 
 ## Comportamento
 
@@ -56,9 +65,10 @@ collision tags (F-0005) para decidir o que descruzar.
 
 ## Limites conhecidos
 
-É opt-in: o roteador algébrico (F-0003) permanece o default em produção
-(ADR-0009). **Direção conhecida:** há intenção de tornar o solver físico o
-padrão; quando acontecer, será um ADR novo que supersede o ADR-0009.
+É opt-in e está **deprecated** (ver banner acima): o roteador algébrico (F-0003)
+é o fallback transitório enquanto o routing não migra para o motor unificado.
+**Direção conhecida:** este engine não vira padrão — é substituído pelo routing
+do motor físico unificado (ADR-0012, Fase 4), que então supersede o ADR-0009.
 
 ## Operações relacionadas
 

@@ -34,7 +34,7 @@ acceptance:
     feature: "o router selecionado é curved"
     response: "as arestas são desenhadas como curvas Bezier"
 depends_on: [F-0001]
-decisions: [ADR-0005]
+decisions: [ADR-0013]
 ---
 
 # F-0003 · Edge routers pluggáveis

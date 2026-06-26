@@ -1,15 +1,27 @@
 ---
 id: ADR-0005
 date: 2026-06-02
-status: accepted
+status: superseded
 supersedes: null
-superseded_by: null
+superseded_by: [ADR-0010, ADR-0011, ADR-0012, ADR-0013]
 affects_features: [F-0002, F-0003, F-0005]
 related: []
 tags: [architecture, layout, routing]
 ---
 
 # ADR-0005 · Plugins de layout/routing + modelo de força atrator-central
+
+> **Superseded (2026-06-18).** Este ADR juntava duas decisões; foi superado e
+> dividido (split parcial):
+>
+> - **arquitetura de plugins layout/routing** (parcialidade mantida) →
+>   **ADR-0013**, que a mantém vigente;
+> - **modelo de força** ("atrator central único / arestas passivas / separação
+>   só por collision layers") (novidade) → **ADR-0010** (repulsão entre corpos,
+>   atração só por atratores), **ADR-0011** (zona de força linear zona×zona) e
+>   **ADR-0012** (arestas movidas por força — derruba "arestas passivas").
+>
+> O texto abaixo é preservado como registro histórico.
 
 ## Contexto
 

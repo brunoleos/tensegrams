@@ -1,5 +1,12 @@
 // Entry point do solver físico de routing.
 //
+// @deprecated (ADR-0009 atualização 2026-06 / F-0017). Esta é a implementação
+// de routing físico ANTERIOR, separada do motor de layout. Está deprecated e
+// será REMOVIDA na Fase 4, substituída pelo routing do motor físico unificado
+// (src/physics, ADR-0012), onde arestas e nós são corpos do mesmo simulador.
+// Continua funcional como opt-in legado (`routing.engine: physics`, com aviso
+// de depreciação emitido pelo pipeline) até a migração.
+//
 // `runPhysicsRouter` substitui (quando `cfg.routing.engine = 'physics'`)
 // o caminho algébrico `applyObstacleRouting` no pipeline.
 //

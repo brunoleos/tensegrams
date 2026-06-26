@@ -22,6 +22,12 @@ import { clipAnchorsToContainerFaces } from '../routing/clip-anchors.js';
 import { snapContainerEndpointsExternal } from '../routing/snap-container-anchors.js';
 import { runPhysicsRouter } from '../routing/physics/index.js';
 
+// DEPRECATED: o engine de routing físico ANTERIOR (src/routing/physics, F-0017)
+// está deprecated (ADR-0009, atualização 2026-06). Será substituído pelo routing
+// do motor físico unificado (src/physics, ADR-0012, Fase 4). Guard para avisar
+// uma única vez por sessão (o branch roda a cada tick).
+let _physicsRoutingDeprecationWarned = false;
+
 export function createPipeline(deps) {
   const {
     store, viewport, renderer,
@@ -172,13 +178,26 @@ export function createPipeline(deps) {
       }
       const rawEdges = session.routedEdges
         || router.route(ir, routingRects, mergedOpts.router || {});
-      // Branch: engine algébrico (default) ou solver físico (opt-in via
-      // mergedOpts.routing.engine = 'physics'). Fase 1 do solver é
-      // no-op — fica habilitável sem regressão funcional, mas sem efeito
-      // de roteamento ainda.
+      // Branch de engine de routing. Sem default privilegiado por design
+      // (ADR-0009): algébrico e físico são plugins co-iguais. Enquanto o
+      // algébrico é o único engine maduro, ele é o fallback PRAGMÁTICO
+      // TRANSITÓRIO quando `routing.engine` vem vazio — não "o default"
+      // conceitual. O routing físico definitivo virá do motor unificado
+      // (src/physics, ADR-0012, Fase 4).
       const engine = mergedOpts.routing?.engine || 'algebraic';
       let detoured;
       if (engine === 'physics') {
+        // DEPRECATED (ADR-0009/F-0017): src/routing/physics é a impl. anterior,
+        // substituída pelo routing do motor unificado na Fase 4. Funciona como
+        // opt-in legado; avisa uma vez.
+        if (!_physicsRoutingDeprecationWarned) {
+          _physicsRoutingDeprecationWarned = true;
+          console.warn(
+            "[tensegrams] routing.engine: 'physics' (src/routing/physics) está "
+            + 'DEPRECATED e será removido na Fase 4 (substituído pelo routing do '
+            + 'motor físico unificado, ADR-0012). Use o algébrico até lá.',
+          );
+        }
         const result = runPhysicsRouter(ir, routingRects, collisionResolver, {
           ...mergedOpts,
           _inputRoutedEdges: rawEdges,
