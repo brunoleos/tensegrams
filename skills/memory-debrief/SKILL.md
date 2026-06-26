@@ -1,6 +1,6 @@
 ---
 name: memory-debrief
-description: Use quando o usuário sinaliza intenção de commitar, fechar sessão, ou pedir atualização da memória do projeto (frases como "vou commitar", "atualize o STATE", "feche a sessão", "debrief", "antes de subir"). Examina o diff, atualiza entradas do Manifest, grava checkpoint, e gera proposta de ADR se a sessão produziu decisão arquitetural.
+description: Use quando o usuário sinaliza intenção de commitar, fechar sessão, ou pedir atualização da memória do projeto (frases como "vou commitar", "atualize a memória", "feche a sessão", "debrief", "antes de subir"). Examina o diff, atualiza entradas do Manifest, registra o trabalho no changelog/UNRELEASED.md, e gera proposta de ADR se a sessão produziu decisão arquitetural.
 ---
 
 # Memory debrief
@@ -15,11 +15,11 @@ A memória existe para que o próximo agente entenda **o que o projeto faz** e *
 
 Alvos por artefato:
 
-| Artefato     | Alvo      | Conteúdo                                                    |
-|--------------|-----------|-------------------------------------------------------------|
-| Checkpoint   | ≤ 500 B   | só frontmatter, sem corpo                                   |
-| Feature F-*  | ≤ 1.5 KB  | `user_value` em 1 frase, 3–4 critérios EARS de 1 linha     |
-| ADR          | ≤ 1.5 KB  | contexto + decisão + alternativas rejeitadas, todos curtos  |
+| Artefato         | Alvo      | Conteúdo                                                |
+|------------------|-----------|---------------------------------------------------------|
+| Entrada UNRELEASED | ≤ 1 linha | resumo curto, referenciando as F/ADR que toca           |
+| Feature F-*      | ≤ 1.5 KB  | `user_value` em 1 frase, 3–4 critérios EARS de 1 linha  |
+| ADR              | ≤ 1.5 KB  | contexto + decisão + alternativas rejeitadas, todos curtos |
 
 Se passou do alvo, corte. Detalhes mecânicos já vivem no código e na mensagem do commit — não duplique.
 
@@ -39,24 +39,21 @@ Para cada feature cujo código foi tocado:
 
 Se há capacidade nova sem entrada no Manifest, crie uma — formato em "Feature mínima" abaixo. ID = próximo número livre em `manifest/features/`.
 
-### 3. Grave o checkpoint
+### 3. Registre o trabalho no UNRELEASED
 
-`STATE.md` é view derivada de `.feat-memory/checkpoints/` (ADR-0018). Você nunca o reescreve direto.
+O foco em-voo vive em `.feat-memory/changelog/UNRELEASED.md` (ADR-0043) — não há mais `STATE.md` nem comando de checkpoint. Adicione uma **entrada-bullet** sob a seção apropriada (`Adicionado`/`Mudado`/`Corrigido`), **referenciando** as `F-NNNN`/`ADR-NNNN` que a sessão tocou:
 
-```bash
-feat-memory checkpoint \
-  --summary "uma frase: o que esta sessão entregou" \
-  --next "uma frase: próxima ação concreta" \
-  --features F-NNNN[,F-NNNN] \
-  --decisions ADR-NNNN \
-  --author claude-opus-4.7
+```markdown
+## Adicionado
+
+- resumo curto do que esta sessão entregou (F-NNNN, ADR-NNNN)
 ```
 
-- **Não use `--current` por padrão.** Default = `--summary`. Especifique só quando estado atual diverge do que foi entregue (ex: entregou X mas está bloqueado em Y).
-- **Flags omitidas herdam do checkpoint anterior.** `--blocked-on` só se houver bloqueio externo real.
-- **Não escreva corpo.** Frontmatter é o contrato. Corpo livre só para nota genuinamente auxiliar (link externo, contexto que não cabe no diff).
+O orçamento de retomada da próxima sessão é **derivado** dessas referências (ADR-0043) — por isso toda entrada cita as F/ADR que toca. O arquivo é volátil: edite direto, sem cerimônia.
 
-Projetos pré-v0.6 sem `checkpoints/`: `feat-memory migrate --to=checkpoints` uma vez (idempotente). Se STATE.md ficou inconsistente por edição manual, `feat-memory state-rebuild` regenera sem criar novo checkpoint.
+Ao lançar uma versão, `feat-memory release` congela o `UNRELEASED.md` em `changelog/<VERSION>.md`, commita e cria a tag `v<VERSION>` (ADR-0042/0045). O bump de `VERSION` continua per-commit; o `UNRELEASED` reinicia vazio.
+
+Projetos em layout legado (com `STATE.md`/`CHANGELOG.md`/`checkpoints/`): `feat-memory migrate --to=changelog` uma vez (idempotente) migra tudo para o layout novo.
 
 ### 4. Decida sobre ADR
 
@@ -66,6 +63,8 @@ Critério: se um contribuidor lendo o commit em 6 meses precisaria de explicaç�
 
 **Superseding um ADR existente.** Quando esta sessão marca um ADR com `status: superseded` (e adiciona `superseded_by` apontando para o novo), mova o arquivo para `.feat-memory/decisions/superseded/` via `git mv` (ADR-0023, F-0019). IDs continuam resolvíveis pelo crosscheck e citáveis por `superseded_by` em ADRs novos; o move desonera o INDEX principal. Sem subcomando — operação manual.
 
+**Supersede parcial (ADR-0040).** Se a decisão nova invalida só **parte** de um ADR, não deixe o base meio-válido (parte obsoleta + parte vigente no mesmo arquivo é ambíguo). Marque o base **inteiro** como `superseded` e divida em ADRs novos: um com a decisão nova, outro(s) re-afirmando a parte que continua válida. O `superseded_by` do base lista **todos** os sucessores. Assim todo ADR vigente é verdadeiro por inteiro.
+
 ### 5. Valide
 
 `feat-memory audit --strict --no-index`. Drift = caminho em `contracts` virou inválido ou arquivo removido sem deprecar a feature.
@@ -74,7 +73,7 @@ Em branch destinada a merge em `main`: `feat-memory audit --check-collisions ori
 
 ### 6. Apresente o resumo
 
-Antes de commitar: features atualizadas (IDs), `Current`/`Next` do STATE, status do ADR, resultado do audit.
+Antes de commitar: features atualizadas (IDs), a entrada registrada no `changelog/UNRELEASED.md`, status do ADR, resultado do audit.
 
 ### 7. Telemetria
 
@@ -83,6 +82,12 @@ feat-memory record debrief_run features=F-NNNN[,F-NNNN]
 ```
 
 Local-only, falha não bloqueia (F-0014, ADR-0017).
+
+### 8. Retrospectiva e sugestões de evolução (ADR-0046)
+
+Feche com uma **retrospectiva inline** — não persista a narrativa, só reflita na conversa: o que foi entregue (escopo + magnitude), bugs diagnosticados, achados (arquiteturais/processuais) e um **resumo honesto** (o que funcionou, o que custou mais do que devia, qual o risco residual). As saídas duráveis já têm lar — não duplique: release→entrada no `UNRELEASED`, decisão→ADR, capacidade→Feature.
+
+Se durante a sessão surgiu uma **proposta de evolução do próprio sistema** (skill nova, regra de `AGENTS.md`, ADR transversal, refactor, heurística frouxa), aplique **ask-before-register**: pergunte ao usuário se quer **resolver agora**, **adiar** (registrar em `.feat-memory/suggestions.md`) ou **descartar**. Nunca persista silenciosamente; duplicata de uma pendência já listada é só um bump de `occ`. O backlog é o funil pré-feature e o fallback de retomada quando o `UNRELEASED` está vazio.
 
 ## Feature mínima
 
@@ -167,7 +172,8 @@ O que decidiu e o porquê dominante. Embuta trade-offs aqui ("aceitamos custo X 
 - **Inventar features** para preencher Manifest. Sem capacidade nomeável, sem entrada.
 - **Feature guarda-chuva / changelog.** Empacotar várias mudanças de um lote (fixes + cleanup + cosmético) numa só feature. Passe pelo "Teste de uma capacidade" — divida ou deixe no git.
 - **Inventar métricas.** Sem medição desta sessão, mantenha valor anterior ou remova o campo.
-- **Corpo de checkpoint.** Frontmatter > prosa duplicada.
+- **Entrada de UNRELEASED prolixa.** Uma linha referenciando as F/ADR basta; o detalhe vai no código e no commit.
 - **Duplicar frontmatter no body** de feature ou ADR.
 - **Forçar ADR** para mudança mecânica.
 - **Promover drafts** de `decisions/proposals/` para `decisions/` sem revisão humana.
+- **Persistir specs / planos longos.** O registro durável de uma sessão é ADR + Feature, não um design doc paralelo; planejamento é efêmero (conversa/plan mode). Proponha ADRs cedo (`proposed`) e stubs de feature (`planned`) para a retomada não depender de plano efêmero (ADR-0041).

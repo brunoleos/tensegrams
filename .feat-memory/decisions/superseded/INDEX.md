@@ -8,4 +8,4 @@ diretórios); ficam aqui para não onerar o INDEX principal.
 |---|---|---|---|---|
 | ADR-0005 | 2026-06-02 | superseded | architecture,layout,routing | F-0002,F-0003,F-0005 |
 
-_Gerado por `feat-memory audit` em 2026-06-26T02:02:47+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-26T18:26:05+00:00. Não edite manualmente._

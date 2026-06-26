@@ -4,9 +4,9 @@
 # A diretiva `merge=ours` mantém a versão local em qualquer merge,
 # descartando a outra sem gerar conflito. Aplica-se a:
 #
-# - Índices gerados (regenerados pelo `feat-memory audit` após merge)
-# - STATE.md (foco da sessão é volátil; tentativa de mesclar produz texto
-#   incoerente sem ganho operacional)
+# - Índices gerados (regenerados pelo `feat-memory audit`/`release` após merge)
+# - changelog/UNRELEASED.md (trabalho em voo é volátil; tentativa de mesclar
+#   produz texto incoerente sem ganho operacional)
 # - .meta.yaml (cli_path e deployed_at variam por máquina/deploy; cada
 #   dev mantém o reflexo do seu próprio último deploy)
 #
@@ -20,6 +20,7 @@
 .feat-memory/manifest/archive/INDEX.md     merge=ours
 .feat-memory/decisions/INDEX.md            merge=ours
 .feat-memory/decisions/superseded/INDEX.md merge=ours
-.feat-memory/STATE.md                      merge=ours
+.feat-memory/changelog/INDEX.md            merge=ours
+.feat-memory/changelog/UNRELEASED.md       merge=ours
 .feat-memory/.meta.yaml                    merge=ours
 # <<< feat-memory <<<

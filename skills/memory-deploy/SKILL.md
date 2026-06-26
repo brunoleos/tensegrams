@@ -37,7 +37,7 @@ Em ambos os cenários (greenfield e legacy), rode `feat-memory deploy <projeto>`
 
 - Cria `AGENTS.md` com frontmatter scaffold + bloco com sentinelas, ou — se já existe — anexa o bloco preservando todo o resto do conteúdo do usuário. Em re-deploys, o bloco é refrescado de forma idempotente.
 - Cria `CLAUDE.md` (redirect mínimo `@AGENTS.md`) se ausente; deixa quieto se existe.
-- Cria `.feat-memory/STATE.md` se ausente.
+- Cria `.feat-memory/changelog/UNRELEASED.md` se ausente.
 - Copia as skills para `skills/` (sempre sobrescritas; conteúdo de metodologia).
 - Cria pastas `.feat-memory/manifest/features/` e `.feat-memory/decisions/proposals/`.
 - Instala o pre-commit hook se for repositório Git.
@@ -106,9 +106,9 @@ Para cada decisão identificada (dependências, estrutura, camadas, cortes de es
 
 Apresente cada ADR proposto individualmente para revisão humana. Não gere uma fila sem aprovação intermediária — o cansaço do revisor é o inimigo. Ao aprovar, escreva diretamente em `.feat-memory/decisions/NNNN-slug.md` (não em `proposals/`, porque são reconstruções de decisões já tomadas, não propostas novas).
 
-#### Fase 3.4: `.feat-memory/STATE.md` inicial e auditoria
+#### Fase 3.4: `changelog/UNRELEASED.md` inicial e auditoria
 
-Reescreva `.feat-memory/STATE.md` com `Current` registrando algo como "Memória inicial estabelecida via gênese retroativa. Última feature mapeada: F-NNNN." Em `Next`, escreva uma frase neutra do tipo "Aguardando definição do próximo foco pelo usuário." — não pergunte ao usuário e não invente um foco; ele rescreve quando começar a trabalhar. Em `Recent`, adicione uma linha sobre a gênese com timestamp atual. Deixe `active_features` vazio ou apenas com features em foco no momento.
+Deixe `.feat-memory/changelog/UNRELEASED.md` **vazio** (só o template) após a gênese: a gênese estabelece o histórico (Manifest + decisions), não trabalho em voo. Não invente um foco; o usuário registra a primeira entrada quando começar a trabalhar, referenciando as F/ADR que tocar. O orçamento de retomada será derivado dessas entradas (ADR-0043).
 
 Rode `feat-memory audit` para validar a estrutura completa e sugira o commit inicial.
 

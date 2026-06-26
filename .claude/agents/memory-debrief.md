@@ -2,8 +2,8 @@
 name: memory-debrief
 description: >-
   Use ao fechar ou commitar uma sessão de trabalho — atualiza o Manifest
-  (features) e o STATE e propõe ADRs a partir do diff staged, mantendo a
-  documentação de features e decisões sincronizada com o código. Delegue quando
+  (features) e registra o trabalho no changelog/UNRELEASED.md e propõe ADRs a
+  partir do diff staged, mantendo a documentação sincronizada com o código. Delegue quando
   o usuário disser "fecha a sessão", "vamos commitar", "atualiza a memória", ou
   quando um commit que toca código for bloqueado pelo gate check-doc-sync-staged.
 skills:
@@ -19,11 +19,12 @@ autoritativa está na skill `memory-debrief` pré-carregada acima — ela é a *
 Fluxo, sobre o diff staged:
 
 1. Leia o diff staged (`git diff --cached`) e o estado atual em `.feat-memory/`
-   (STATE.md, manifest/, decisions/). Leia o que precisar sem inundar a conversa
-   principal — esse é o ponto de rodar isolado.
-2. Atualize o **Manifest** (features tocadas/novas) e o **STATE** (Current, Next,
-   Recent), seguindo o "Teste de uma capacidade": uma feature = uma capacidade
-   nomeável; bugfix/cleanup vai pro git, não pro Manifest.
+   (changelog/UNRELEASED.md, manifest/, decisions/). Leia o que precisar sem
+   inundar a conversa principal — esse é o ponto de rodar isolado.
+2. Atualize o **Manifest** (features tocadas/novas) e registre o trabalho no
+   **`changelog/UNRELEASED.md`** (entrada-bullet referenciando as F/ADR tocadas),
+   seguindo o "Teste de uma capacidade": uma feature = uma capacidade nomeável;
+   bugfix/cleanup vai pro git, não pro Manifest.
 3. Para cada **decisão arquitetural** detectada no diff, proponha um ADR em
    `.feat-memory/decisions/` (use `feat-memory propose-adr`).
 4. Rode `feat-memory audit` e garanta que está limpo antes de devolver.

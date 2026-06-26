@@ -15,4 +15,4 @@
 | ADR-0012 | 2026-06-10 | accepted | physics,routing,edges | F-0017 |
 | ADR-0013 | 2026-06-18 | accepted | architecture,layout,routing | F-0002,F-0003 |
 
-_Gerado por `feat-memory audit` em 2026-06-26T02:02:47+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-26T18:26:05+00:00. Não edite manualmente._
