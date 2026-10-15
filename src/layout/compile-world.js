@@ -38,15 +38,30 @@ const DEFAULTS = {
   engine: 'v1',
   center: 0.012,
   damping: 0.82,
-  collisionK: 0.3,        // Kp do controlador de colisão
-  collisionKi: 0.04,      // Ki (termo integral)
+  // Contato P puro (ADR-0011): f = Kp·pen. O termo integral (Ki 0,04) mantinha
+  // ciclo-limite e dobrava o tempo de assentamento. Kp 0,9 com 2 sub-passos
+  // recupera a folga que o integral fechava (penetração padded máxima média
+  // de 0,7 px, contra 0,16 com Ki) e assenta limpo; Kp 0,9 com 1 sub-passo
+  // vibra. Medição: bench/layout, ex:+syn:30+syn:100 × 5 seeds (R04).
+  collisionK: 0.9,        // Kp do controlador de colisão
+  collisionKi: 0,         // Ki (termo integral) — fora do default
   collisionPadding: 12,
   tagAttract: 60,
   tagRepel: 4000,
   alphaDecay: 0.012,
   alphaMin: 0.003,
-  alphaKick: 0.5,
-  substeps: 1,
+  alphaKick: 0.5,   // reaquecimento de drag/release
+  warmKick: 0.05,   // alpha mínimo de um warm restart (edição da DSL)
+  substeps: 2,
+  // Repouso cinético (R04): 'end' quando nenhum corpo móvel anda mais que
+  // restSpeed px/tick por restTicks ticks seguidos. Alpha vira só teto.
+  // restSpeed 0 desliga o critério (só o cronograma de alpha termina).
+  restSpeed: 0.1,
+  restTicks: 20,
+  // Limite de velocidade por eixo (px/tick). null = 8 com a mola de
+  // conectividade, 32 sem (o mesmo 32 do v1). Sem limite o pico chegava a
+  // 368 px/tick com nós empilhados.
+  velocityCap: null,
   interactionMode: 'frozen',
   // Mola de conectividade (#opt-in, Fase 3): arestas puxam seus endpoints.
   // Default OFF preserva o modelo atrator-central. Knobs de baixo nível
@@ -55,6 +70,46 @@ const DEFAULTS = {
   edgeSpring: 0.05,
   edgeRestLength: 120,
 };
+
+// Hash FNV-1a (32 bits) do id: direção inicial da busca de lugar livre de um
+// nó novo, dependente só do id (não da ordem dos blocos no YAML).
+function hashId(id) {
+  let h = 0x811c9dc5;
+  const str = String(id);
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+// Semente de cold start: posições num círculo em ordem de BFS sobre as
+// arestas, partindo do menor id e visitando vizinhos em ordem de id. Vizinhos
+// nascem lado a lado (a semente domina os cruzamentos finais) e a ordem dos
+// blocos no YAML não muda nada.
+function circleSeeds(ids, neighbors) {
+  const sorted = [...ids].sort();
+  const idSet = new Set(ids);
+  const order = [], seen = new Set();
+  for (const root of sorted) {
+    if (seen.has(root)) continue;
+    seen.add(root);
+    const queue = [root];
+    while (queue.length) {
+      const id = queue.shift();
+      order.push(id);
+      const next = (neighbors.get(id) || []).filter((m) => idSet.has(m) && !seen.has(m)).sort();
+      for (const m of next) { seen.add(m); queue.push(m); }
+    }
+  }
+  const out = new Map();
+  order.forEach((id, i) => {
+    const a = (i / Math.max(1, order.length)) * Math.PI * 2;
+    const r = 180 + 35 * (i % 4);
+    out.set(id, [Math.cos(a) * r, Math.sin(a) * r]);
+  });
+  return out;
+}
 
 function maxWeight(map) {
   let m = 0;
@@ -78,17 +133,76 @@ export function startLayoutV2(ir, opts = {}) {
   const slotToNode = new Map();
   const originalInvMass = new Map();
 
-  bodyNodes.forEach((n, i) => {
-    const w = n.hasChildren ? Math.max(120, n.width) : n.width;
-    const h = n.hasChildren ? Math.max(60, n.height) : n.height;
-    let cx, cy;
-    if (n.pinned) {
-      cx = n.pinned.x + w / 2; cy = n.pinned.y + h / 2;
-    } else {
-      const a = (i / Math.max(1, bodyNodes.length)) * Math.PI * 2;
-      const r = 180 + 35 * (i % 4);
-      cx = Math.cos(a) * r; cy = Math.sin(a) * r;
+  // Warm start (R04): o pipeline passa o último frame em seedPositions
+  // (rects top-left) a cada edição. Corpos com semente nascem onde estavam;
+  // corpo novo nasce no primeiro lugar livre perto dos vizinhos semeados
+  // (arestas da IR); sem vizinho semeado, na semente de cold start (BFS).
+  const seeds = cfg.seedPositions instanceof Map ? cfg.seedPositions : null;
+  const seedCenter = (id) => {
+    const r = seeds && seeds.get(id);
+    return r ? [r.x + (r.width || 0) / 2, r.y + (r.height || 0) / 2] : null;
+  };
+  const neighbors = new Map();
+  for (const e of ir.edges) {
+    if (!neighbors.has(e.source)) neighbors.set(e.source, []);
+    if (!neighbors.has(e.target)) neighbors.set(e.target, []);
+    neighbors.get(e.source).push(e.target);
+    neighbors.get(e.target).push(e.source);
+  }
+  const warmRestart = !!seeds && bodyNodes.some((n) => seeds.has(n.id));
+  const sizeOf = (n) => [n.hasChildren ? Math.max(120, n.width) : n.width, n.hasChildren ? Math.max(60, n.height) : n.height];
+
+  // 1ª passada: corpos com posição conhecida (pin ou semente).
+  const center = new Map();
+  for (const n of bodyNodes) {
+    const [w, h] = sizeOf(n);
+    if (n.pinned) center.set(n.id, [n.pinned.x + w / 2, n.pinned.y + h / 2]);
+    else { const c = seedCenter(n.id); if (c) center.set(n.id, c); }
+  }
+  // Corpo novo num warm restart: primeiro lugar livre (contrato padded) numa
+  // espiral em volta do centróide dos vizinhos já posicionados, começando no
+  // ângulo do hash do id. Nascer em cima de um vizinho empurraria a cena toda.
+  const pad = cfg.collisionPadding;
+  const freeSpot = (n, cx0, cy0) => {
+    const [w, h] = sizeOf(n);
+    const fits = (x, y) => {
+      for (const m of bodyNodes) {
+        const c = center.get(m.id);
+        if (!c || m === n) continue;
+        const [mw, mh] = sizeOf(m);
+        if (Math.abs(x - c[0]) < (w + mw) / 2 + 2 * pad && Math.abs(y - c[1]) < (h + mh) / 2 + 2 * pad) return false;
+      }
+      return true;
+    };
+    const a0 = (hashId(n.id) / 4294967296) * Math.PI * 2;
+    const R = Math.hypot(w, h) / 2 + 2 * pad;
+    for (const k of [1, 1.5, 2, 3, 4]) {
+      for (let i = 0; i < 16; i++) {
+        const a = a0 + (i / 16) * Math.PI * 2;
+        const x = cx0 + Math.cos(a) * R * k, y = cy0 + Math.sin(a) * R * k;
+        if (fits(x, y)) return [x, y];
+      }
     }
+    return [cx0 + Math.cos(a0) * R * 5, cy0 + Math.sin(a0) * R * 5];
+  };
+  const coldSeeds = circleSeeds(bodyNodes.filter((n) => !center.has(n.id)).map((n) => n.id), neighbors);
+  for (const n of bodyNodes) {
+    if (center.has(n.id)) continue;
+    const around = (neighbors.get(n.id) || []).map((id) => center.get(id)).filter(Boolean);
+    if (warmRestart && around.length) {
+      const cx0 = around.reduce((acc, p) => acc + p[0], 0) / around.length;
+      const cy0 = around.reduce((acc, p) => acc + p[1], 0) / around.length;
+      center.set(n.id, freeSpot(n, cx0, cy0));
+    } else {
+      const [sx, sy] = coldSeeds.get(n.id);
+      // Num warm restart, mesmo sem vizinho semeado, não nasce em cima de ninguém.
+      center.set(n.id, warmRestart ? freeSpot(n, sx, sy) : [sx, sy]);
+    }
+  }
+
+  bodyNodes.forEach((n) => {
+    const [w, h] = sizeOf(n);
+    const [cx, cy] = center.get(n.id);
     const invMass = n.pinned ? 0 : Math.max(MASS_EPS, 1 - maxWeight(n.nodeCollision));
     const slot = addBody(world, {
       x: cx, y: cy, invMass,
@@ -160,9 +274,14 @@ export function startLayoutV2(ir, opts = {}) {
   const solver = createSolver(
     { contributors, constraints },
     {
-      integrator: { damping: cfg.damping, dampingOrder: 'after' },
+      integrator: {
+        damping: cfg.damping, dampingOrder: 'after',
+        velocityCap: cfg.velocityCap ?? (cfg.connectivitySpring ? 8 : 32),
+      },
       substeps: cfg.substeps,
-      alpha0: anyMovable() ? 1 : 0,
+      // Warm restart parte do alpha anterior (no mínimo warmKick), não de 1:
+      // a cena reajusta em vez de re-explodir.
+      alpha0: anyMovable() ? (warmRestart ? Math.max(cfg.seedAlpha || 0, cfg.warmKick) : 1) : 0,
       alphaDecay: cfg.alphaDecay,
       alphaMin: cfg.alphaMin,
     },
@@ -232,18 +351,41 @@ export function startLayoutV2(ir, opts = {}) {
 
   function emit(ev) { for (const cb of listeners[ev]) cb(session); }
 
-  // O solver prende alpha EXATAMENTE em alphaMin (solver.js: max(alphaMin, …)),
-  // então "assentou" é alpha <= alphaMin. Com `<` estrito o 'end' nunca saía e o
-  // rAF rodava para sempre com corpos livres. Isto marca o fim do cronograma de
-  // alpha, não repouso cinético (esse critério é outro passo).
-  const settled = (a) => a <= cfg.alphaMin;
+  // Termina quando os corpos param (critério cinético) ou, no máximo, quando
+  // alpha chega ao piso: o solver o prende EXATAMENTE em alphaMin
+  // (solver.js: max(alphaMin, …)), então o teto é alpha <= alphaMin.
+  let stillTicks = 0, maxSpeed = 0, kineticEnergy = 0;
+
+  function measureMotion() {
+    const d = world.data;
+    let vmax2 = 0, ke = 0;
+    for (const slot of originalInvMass.keys()) {
+      const o = slot * STRIDE;
+      const im = d[o + INV_MASS];
+      if (im === 0) continue; // pinado ou congelado no drag
+      const v2 = d[o + VX] * d[o + VX] + d[o + VY] * d[o + VY];
+      if (v2 > vmax2) vmax2 = v2;
+      ke += 0.5 * v2 / im;
+    }
+    maxSpeed = Math.sqrt(vmax2);
+    kineticEnergy = ke;
+    if (cfg.restSpeed > 0 && maxSpeed < cfg.restSpeed) stillTicks++;
+    else stillTicks = 0;
+  }
+
+  const settled = () => solver.alpha <= cfg.alphaMin
+    || (cfg.restSpeed > 0 && stillTicks >= cfg.restTicks);
+
+  // Reaquecimento (drag, release, warm restart): zera o contador de repouso.
+  function kick(a) { solver.kick(a); stillTicks = 0; }
 
   function stepOnce() {
     if (stopped) return;
-    const alpha = solver.tick(world);
+    solver.tick(world);
+    measureMotion();
     commit();
     emit('tick');
-    if (settled(alpha)) {
+    if (settled()) {
       if (!endEmitted) { endEmitted = true; emit('end'); }
       cancelLoop();
     } else {
@@ -251,7 +393,7 @@ export function startLayoutV2(ir, opts = {}) {
     }
   }
 
-  function loop() { rafHandle = null; if (stopped) return; stepOnce(); if (!settled(solver.alpha)) ensureRunning(); }
+  function loop() { rafHandle = null; if (stopped) return; stepOnce(); if (!settled()) ensureRunning(); }
   function ensureRunning() {
     if (stopped || rafHandle != null) return;
     if (typeof requestAnimationFrame !== 'undefined') rafHandle = requestAnimationFrame(loop);
@@ -292,7 +434,7 @@ export function startLayoutV2(ir, opts = {}) {
             world.data[slot * STRIDE + INV_MASS] = 0;
           }
         }
-        solver.kick(cfg.alphaKick);
+        kick(cfg.alphaKick);
         ensureRunning();
       }
       if (patch.release) {
@@ -305,18 +447,21 @@ export function startLayoutV2(ir, opts = {}) {
         if (cfg.interactionMode === 'frozen') {
           for (const [slot, im] of originalInvMass) world.data[slot * STRIDE + INV_MASS] = im;
         }
-        solver.kick(cfg.alphaKick);
+        kick(cfg.alphaKick);
         ensureRunning();
       }
     },
     tick() { stepOnce(); },
     stop() { stopped = true; cancelLoop(); },
     get alpha() { return solver.alpha; },
+    // Observáveis de movimento do último tick (px/tick e ½·Σ m·v²).
+    get maxSpeed() { return maxSpeed; },
+    get kineticEnergy() { return kineticEnergy; },
   };
 
   commit(); // commit inicial para subscribers verem algo
 
-  if (settled(solver.alpha)) {
+  if (solver.alpha <= cfg.alphaMin) {
     queueMicrotask(() => { if (stopped) return; emit('tick'); endEmitted = true; emit('end'); });
   } else if (typeof requestAnimationFrame !== 'undefined') {
     ensureRunning();

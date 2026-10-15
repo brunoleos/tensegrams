@@ -27,7 +27,10 @@ const DEFAULTS = {
   waypointSpring: 0.08,  // pull on an edge waypoint toward its midline
   alphaDecay: 0.012,     // ~50% mais settle vs 0.018 — diagramas complexos têm tempo de acomodar
   alphaMin: 0.003,
-  alphaKick: 0.5,
+  alphaKick: 0.5,   // reaquecimento de drag/release
+  // alpha mínimo de um warm restart (edição da DSL/config). Separado do
+  // alphaKick: reaquecer a 0,5 a cada edição deslocava a cena ~76 px.
+  warmKick: 0.05,
   maxVel: 32,
   // Interaction model — two modes that differ ONLY during a drag:
   //   'frozen' (default): while a body is dragged, every OTHER non-DSL
@@ -148,7 +151,7 @@ function runSession(ir, opts) {
   // so new layouts still settle with full energy.
   const warmRestart = !!cfg.seedPositions
     && leaves.some(n => cfg.seedPositions.has(n.id));
-  const warmAlpha = Math.max(cfg.seedAlpha || 0, cfg.alphaKick);
+  const warmAlpha = Math.max(cfg.seedAlpha || 0, cfg.warmKick);
   let alpha = anyFree() ? (warmRestart ? warmAlpha : 1) : 0;
 
   // Frozen-mode interaction state.

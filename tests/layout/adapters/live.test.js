@@ -651,3 +651,42 @@ b: { label: B, nodeLayers: [g] }
       `expected larger nodePad → larger gap, got tight=${gap(tight)} wide=${gap(wide)}`);
   });
 });
+
+describe('live adapter — warmKick separado do alphaKick (R04)', () => {
+  const SRC = `
+connections:
+  - [a, b]
+a: { nodeLayers: [g], size: [40, 30] }
+b: { nodeLayers: [g], size: [40, 30] }
+`;
+  const irOf = () => buildIR(parse(SRC));
+
+  test('warm restart (edição da DSL) parte de warmKick, não de alphaKick', () => {
+    const s0 = adapter.start(irOf(), {});
+    const seed = new Map(s0.positions);
+    s0.stop();
+    const s1 = adapter.start(irOf(), { live: { seedPositions: seed, seedAlpha: 0 } });
+    assert.equal(s1.alpha, 0.05);
+    s1.stop();
+  });
+
+  test('seedAlpha maior que warmKick é respeitado', () => {
+    const s0 = adapter.start(irOf(), {});
+    const seed = new Map(s0.positions);
+    s0.stop();
+    const s1 = adapter.start(irOf(), { live: { seedPositions: seed, seedAlpha: 0.3 } });
+    assert.equal(s1.alpha, 0.3);
+    s1.stop();
+  });
+
+  test('drag continua reaquecendo com alphaKick', () => {
+    const s0 = adapter.start(irOf(), {});
+    const seed = new Map(s0.positions);
+    s0.stop();
+    const s1 = adapter.start(irOf(), { live: { seedPositions: seed, seedAlpha: 0 } });
+    const a = s1.positions.get('a');
+    s1.update({ drag: { id: 'a', x: a.x + 10, y: a.y } });
+    assert.ok(s1.alpha >= 0.5, `alpha=${s1.alpha}`);
+    s1.stop();
+  });
+});

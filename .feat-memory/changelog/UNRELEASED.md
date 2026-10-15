@@ -13,6 +13,10 @@ schema_version: 1
 
 - Motor v2 emite 'end' e para o rAF com corpos livres: o critério de assentamento é alpha <= alphaMin, o piso em que o solver prende alpha; o helper de teste passa a esperar o 'end' do produto (R03 da avaliação; ADR-0011)
 
+## Mudado
+
+- Motor v2 (R04/M0): 'end' por repouso cinético (alpha só teto) com KE e maxSpeed na sessão; warm start honra seedPositions/seedAlpha (nó novo em lugar livre junto aos vizinhos); semente de cold start em BFS, independente da ordem do YAML; damping como taxa por tick (deslize igual com 1–8 sub-passos); velocityCap 32 (8 com mola); contato P puro com Kp 0,9 e 2 sub-passos (Ki 0, medido na bancada); colisão descarta estado de slot removido. v1 ganha warmKick 0,05 separado do alphaKick (ADR-0011, ADR-0012)
+
 ## Adicionado
 
 - Bancada de layout em bench/layout (npm run bench:layout): cenários do app e sintéticos com --seeds, métricas de colisão, contenção, cruzamentos, determinismo, assentamento cinético e mapa mental, e layouts externos plugáveis; teste de fumaça em tests/bench (R06 parcial da avaliação; ADR-0013)

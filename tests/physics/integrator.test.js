@@ -71,3 +71,40 @@ describe('physics/integrator — semi-implícito', () => {
     assert.equal(d.w.data[d.s * STRIDE + VX], 10 * 0.5 + 4);   // 9
   });
 });
+
+describe('physics/integrator — damping como taxa por tick (R04)', () => {
+  // Corpo livre com v0, sem forças: o deslize total não pode depender do
+  // número de sub-passos em que o tick é dividido.
+  function glide(substeps, { damping = 0.82, v0 = 10, ticks = 200 } = {}) {
+    const w = createWorld(1);
+    const s = addBody(w, { x: 0, vx: v0, invMass: 1 });
+    const dt = 1 / substeps;
+    for (let t = 0; t < ticks * substeps; t++) integrate(w, { dt, damping, dampingOrder: 'after' });
+    return { x: w.data[s * STRIDE + X], vx: w.data[s * STRIDE + VX] };
+  }
+
+  test('com 1 sub-passo o deslize é o de sempre (v0·d/(1−d))', () => {
+    const { x } = glide(1);
+    assert.ok(Math.abs(x - 10 * 0.82 / 0.18) < 1e-3, `x=${x}`); // Float32 no World
+  });
+
+  test('deslize invariante a 1/2/4/8 sub-passos (±1%)', () => {
+    const ref = glide(1).x;
+    for (const n of [2, 4, 8]) {
+      const { x } = glide(n);
+      assert.ok(Math.abs(x - ref) / ref < 0.01, `substeps=${n}: x=${x} ref=${ref}`);
+    }
+  });
+
+  test('velocidade no fim de cada tick é v0·d^t para qualquer nº de sub-passos', () => {
+    for (const n of [1, 2, 4, 8]) {
+      const { vx } = glide(n, { ticks: 3 });
+      assert.ok(Math.abs(vx - 10 * 0.82 ** 3) < 1e-4, `substeps=${n}: vx=${vx}`);
+    }
+  });
+
+  test('damping 1 continua sem amortecimento', () => {
+    const { x, vx } = glide(4, { damping: 1, ticks: 5 });
+    assert.ok(Math.abs(x - 50) < 1e-4 && vx === 10, `x=${x} vx=${vx}`);
+  });
+});

@@ -46,6 +46,7 @@ export function createWorld(initialCapacity = DEFAULT_CAPACITY) {
     capacity: cap,
     count: 0,                           // nº de corpos vivos
     free: [],                           // pilha de slots livres
+    onRemove: new Set(),                // fn(slot): quem guarda estado por slot o descarta
     highWater: 0,                       // maior slot já alocado + 1
   };
 }
@@ -104,6 +105,9 @@ export function removeBody(world, slot) {
   world.generation[slot]++;
   world.count--;
   world.free.push(slot);
+  // Estado indexado por slot (acumuladores de contato, por exemplo) não pode
+  // vazar para o próximo corpo que reusar o slot.
+  for (const fn of world.onRemove) fn(slot);
 }
 
 // Handle estável contra reuso de slot: { slot, gen }.

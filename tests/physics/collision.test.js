@@ -1,8 +1,10 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { createWorld, addBody, clearForces, STRIDE, X, Y, FX, FY, HALF_W } from '../../src/physics/world.js';
+import { createWorld, addBody, clearForces, STRIDE, X, Y, VX, VY, FX, FY, HALF_W } from '../../src/physics/world.js';
 import { createCollision, layersIntersect } from '../../src/physics/collision.js';
 import { integrate } from '../../src/physics/integrator.js';
+import { createSolver } from '../../src/physics/solver.js';
+import { createCentral } from '../../src/physics/contributors/central.js';
 
 const L = (...t) => new Set(t);
 
@@ -111,5 +113,51 @@ describe('physics/collision — contrato de pad (gap por lado)', () => {
     const gap = Math.abs(w.data[b * STRIDE + X] - w.data[a * STRIDE + X]);
     const minGap = 10 + 10 + 2 * pad; // 36 — contato da padded BBox
     assert.ok(gap >= minGap - 1e-3, `gap ${gap.toFixed(2)} >= ${minGap} (sem overlap padded)`);
+  });
+});
+
+describe('physics/collision — anel sob carga assenta sem ciclo-limite (R04/M0)', () => {
+  // 6 corpos em anel, sobrepostos e puxados ao centro, com os parâmetros
+  // default do v2 (Kp 0,9, Ki 0, 2 sub-passos): a energia cinética vai a zero.
+  // O termo integral mantinha um ciclo-limite (KE ≈ 3,7 perpétua na auditoria
+  // do motor), e Kp 0,9 com 1 sub-passo vibra (KE ≈ 0,014).
+  function ring(Ki) {
+    const w = createWorld(8);
+    const g = new Set(['g']);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      addBody(w, { x: Math.cos(a) * 20, y: Math.sin(a) * 20, invMass: 1, halfW: 20, halfH: 15, layers: g });
+    }
+    const solver = createSolver({ contributors: [createCentral({ k: 0.012 }), createCollision({ Kp: 0.9, Ki, pad: 12 })] },
+      { integrator: { damping: 0.82, dampingOrder: 'after', velocityCap: 32 }, substeps: 2, alpha0: 1, alphaDecay: 0, alphaMin: 1 });
+    for (let t = 0; t < 3000; t++) solver.tick(w);
+    let ke = 0;
+    for (let s = 0; s < 6; s++) { const o = s * STRIDE; ke += 0.5 * (w.data[o + VX] ** 2 + w.data[o + VY] ** 2); }
+    return ke;
+  }
+  test('Ki = 0: energia cinética < 1e-6 depois de 3000 ticks', () => {
+    const ke = ring(0);
+    assert.ok(ke < 1e-6, `KE=${ke}`);
+  });
+});
+
+describe('physics/collision — slot reusado não herda estado (R04/M0)', () => {
+  test('remover um corpo descarta o acumulador do par; o novo dono do slot começa do zero', async () => {
+    const { removeBody } = await import('../../src/physics/world.js');
+    const g = new Set(['g']);
+    const w = createWorld(4);
+    const a = addBody(w, { x: 0, y: 0, invMass: 0, halfW: 10, halfH: 10, layers: g });
+    const b = addBody(w, { x: 15, y: 0, invMass: 0, halfW: 10, halfH: 10, layers: g });
+    const col = createCollision({ Kp: 0.5, Ki: 0.5, pad: 0 });
+    for (let i = 0; i < 10; i++) { clearForces(w); col.apply(w, { dt: 1 }); }
+    assert.ok(col._acc.size > 0, 'acumulador formado');
+
+    removeBody(w, b);
+    const c = addBody(w, { x: 15, y: 0, invMass: 0, halfW: 10, halfH: 10, layers: g });
+    assert.equal(c, b, 'slot reusado');
+    clearForces(w);
+    col.apply(w, { dt: 1 });
+    // Penetração 5 px: força de um contato novo = Kp·5 + Ki·5 = 5.
+    assert.ok(Math.abs(w.data[a * STRIDE + FX] + 5) < 1e-6, `fx=${w.data[a * STRIDE + FX]}`);
   });
 });

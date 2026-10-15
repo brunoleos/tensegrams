@@ -41,10 +41,21 @@ export function createCollision(opts = {}) {
   const acc = new Map(); // pairKey -> { v: Float64, s: stepStamp }
   let step = 0;
 
+  // Corpo removido: descarta os acumuladores dos pares em que ele aparece,
+  // para o próximo dono do slot começar do zero (registrado no World no
+  // primeiro apply).
+  function forgetSlot(slot) {
+    for (const k of acc.keys()) {
+      const a = Math.floor(k / 4294967296), b = k % 4294967296;
+      if (a === slot || b === slot) acc.delete(k);
+    }
+  }
+
   function apply(world, cfg = {}, _alpha = 1) {
     // Colisão NÃO escala por alpha: precisa permanecer firme no rest para
     // garantir overlap zero (é o termo integral que converge, não o alpha).
     const dt = cfg.dt ?? 1;
+    if (world.onRemove && !world.onRemove.has(forgetSlot)) world.onRemove.add(forgetSlot);
     const grid = buildGrid(world, { pad });
     const { data, layers } = world;
     step++;
@@ -93,5 +104,5 @@ export function createCollision(opts = {}) {
     for (const [k, e] of acc) if (e.s !== step) acc.delete(k);
   }
 
-  return { apply, reset() { acc.clear(); }, _acc: acc };
+  return { apply, forgetSlot, reset() { acc.clear(); }, _acc: acc };
 }

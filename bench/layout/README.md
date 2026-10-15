@@ -97,7 +97,7 @@ Contrato:
 
 | coluna | definição |
 |---|---|
-| ticks / end? | ticks até o adapter emitir `end`; `end?=NÃO` = não terminou em `--max-ticks`. No `live` (v1 e v2) o `end` marca o fim do cronograma de alpha (~482 ticks com os defaults), não repouso |
+| ticks / end? | ticks até o adapter emitir `end`; `end?=NÃO` = não terminou em `--max-ticks`. No v2 o `end` é repouso cinético (ou o fim do cronograma de alpha, que é o teto); no v1, só o cronograma (~482 ticks) |
 | ticks assent. | primeiro tick após o qual nenhum corpo anda >0,1 px/tick por 20 ticks seguidos (critério cinético, independente do alpha) |
 | tempo ms, ms/tick | wall-clock do runner (inclui snapshot por tick, ~desprezível) |
 | viol. colisão | pares que COMPARTILHAM nodeLayer e se sobrepõem: folha×folha + container×container + folha×container alheio. Contrato do app = 0 |
@@ -115,8 +115,8 @@ Deslocamento baixo num layout degenerado (tudo empilhado, densidade > 1) não é
 mérito: leia sempre junto com `viol. colisão` e `densid.`.
 
 Warm start replica o pipeline: `live.seedPositions` = positions ∪ containers
-anteriores, `live.seedAlpha` = alpha final anterior. Adapters estáticos (e o v2,
-que hoje ignora seeds) têm warm = cold.
+anteriores, `live.seedAlpha` = alpha final anterior. Adapters estáticos têm
+warm = cold.
 
 ## Limitações conhecidas
 
