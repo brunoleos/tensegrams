@@ -6,8 +6,9 @@
 // atrás da flag `cfg.live.engine === 'v2'`.
 //
 // Modelo físico:
-//   - corpos = leaves + containers vazios (containers com filhos derivam o rect
-//     dos descendentes, como no live legado).
+//   - corpos = leaves + containers vazios. Container com filhos é CORPO
+//     COMPOSTO (src/layout/container-bodies.js): rect derivado dos
+//     descendentes, colide com peers e hospeda um atrator-região (ADR-0010).
 //   - massa: peso de colisão vira massa (#1). invMass = pinado ? 0 :
 //     max(EPS, 1 - maxWeight). DSL-pin = massa infinita.
 //   - layers de colisão = chaves de `nodeCollision`. Exclusão ancestral
@@ -22,6 +23,10 @@
 
 import { buildAncestors } from '../dsl/ancestry.js';
 import {
+  createHierarchy, createCoverage, createContainerSet, computeRects,
+  createCompositeCollision, createRegionAttractor, HEADER,
+} from './container-bodies.js';
+import {
   createWorld, addBody, STRIDE, X, Y, VX, VY, INV_MASS, SHAPE, DOF,
 } from '../physics/world.js';
 import { createSolver } from '../physics/solver.js';
@@ -31,7 +36,6 @@ import { createConnectivitySpring } from '../physics/contributors/connectivity-s
 import { createCollision } from '../physics/collision.js';
 import { createConstraint } from '../physics/constraints/index.js';
 
-const HEADER = 22;
 const MASS_EPS = 0.05; // massa mínima: peso 1 fica pesado, não imóvel (D-massa)
 
 const DEFAULTS = {
@@ -53,6 +57,10 @@ const DEFAULTS = {
   alphaKick: 0.5,   // reaquecimento de drag/release
   warmKick: 0.05,   // alpha mínimo de um warm restart (edição da DSL)
   substeps: 2,
+  // Containers compostos (R10): Kp da colisão container×peer (null = o mesmo
+  // collisionK) e força do atrator-região (escala por alpha).
+  compositeK: null,
+  regionK: 0.02,
   // Repouso cinético (R04): 'end' quando nenhum corpo móvel anda mais que
   // restSpeed px/tick por restTicks ticks seguidos. Alpha vira só teto.
   // restSpeed 0 desliga o critério (só o cronograma de alpha termina).
@@ -126,7 +134,6 @@ export function startLayoutV2(ir, opts = {}) {
   // Seleção de corpos: leaves + containers vazios (sem filho sobrevivente).
   const childIdSet = new Set(ir.nodes.filter((n) => n.parent).map((n) => n.parent));
   const bodyNodes = ir.nodes.filter((n) => !n.hasChildren || !childIdSet.has(n.id));
-  const containersWithChildren = ir.nodes.filter((n) => n.hasChildren && childIdSet.has(n.id));
 
   const world = createWorld(Math.max(8, bodyNodes.length));
   const idToSlot = new Map();
@@ -215,12 +222,22 @@ export function startLayoutV2(ir, opts = {}) {
     originalInvMass.set(slot, invMass);
   });
 
-  // Exclusão de domínio: nó não colide com seu container ancestral.
+  // Hierarquia + regra de cobertura (container-bodies.js): um par só colide
+  // diretamente se suas unidades sob o ancestral comum não compartilham layer.
+  const H = createHierarchy(ir);
+  const layerSets = new Map(ir.nodes.map((n) => [n.id, n.nodeCollision && n.nodeCollision.size ? new Set(n.nodeCollision.keys()) : null]));
+  const layersOf = (id) => layerSets.get(id) || null;
+  const covered = createCoverage(H, layersOf);
+  const containerSet = createContainerSet(ir, H, idToSlot);
+
+  // Exclusão de domínio: nó não colide com seu container ancestral, nem com
+  // quem já está separado pela colisão das unidades (cobertura).
   function pairFilter(_world, a, b) {
     const na = slotToNode.get(a), nb = slotToNode.get(b);
     if (!na || !nb) return true;
     if (ancestors.get(na.id)?.has(nb.id)) return false;
     if (ancestors.get(nb.id)?.has(na.id)) return false;
+    if (covered(na.id, nb.id)) return false;
     return true;
   }
 
@@ -243,6 +260,11 @@ export function startLayoutV2(ir, opts = {}) {
     createCentral({ k: cfg.center }),
     createTagForces({ entries: tagEntries, tagToSlots, kAttract: cfg.tagAttract, kRepel: cfg.tagRepel }),
     createCollision({ Kp: cfg.collisionK, Ki: cfg.collisionKi, pad: cfg.collisionPadding, pairFilter }),
+    createCompositeCollision({
+      set: containerSet, H, idToSlot, layersOf, covered,
+      Kp: cfg.compositeK ?? cfg.collisionK, pad: cfg.collisionPadding,
+    }),
+    createRegionAttractor({ set: containerSet, k: cfg.regionK }),
   ];
 
   // Campo opt-in: mola de conectividade (Fase 3). Conecta endpoints que são
@@ -252,7 +274,14 @@ export function startLayoutV2(ir, opts = {}) {
     const edges = [];
     for (const e of ir.edges) {
       const a = idToSlot.get(e.source), b = idToSlot.get(e.target);
-      if (a !== undefined && b !== undefined) edges.push({ a, b, rest: cfg.edgeRestLength });
+      if (a === undefined || b === undefined) continue;
+      const edge = { a, b, rest: cfg.edgeRestLength };
+      // Ponta dentro de um container que não contém a outra: a força vai para
+      // o grupo inteiro (a unidade sob o LCA), como na colisão composta.
+      const [ua, ub] = H.unitsUnderLca(e.source, e.target);
+      if (ua !== e.source && containerSet.descSlots.has(ua)) edge.ga = containerSet.descSlots.get(ua);
+      if (ub !== e.target && containerSet.descSlots.has(ub)) edge.gb = containerSet.descSlots.get(ub);
+      edges.push(edge);
     }
     if (edges.length) contributors.push(createConnectivitySpring({ k: cfg.edgeSpring, edges }));
   }
@@ -293,41 +322,21 @@ export function startLayoutV2(ir, opts = {}) {
   }
 
   // ---- mapeamento World → modelo visual ----
+  const rectBuf = new Map();
   function commit() {
+    // Geometria única (container-bodies.computeRects), a mesma da colisão
+    // composta: corpos pelo AABB do slot, containers bottom-up.
+    const rects = computeRects(world, containerSet, idToSlot, rectBuf);
     const positions = new Map();
     const containers = new Map();
-    const d = world.data;
     for (const n of bodyNodes) {
-      const o = idToSlot.get(n.id) * STRIDE;
-      const cx = d[o + X], cy = d[o + Y];
-      if (n.hasChildren) {
-        const w = Math.max(120, n.width), h = Math.max(60, n.height);
-        containers.set(n.id, { x: cx - w / 2, y: cy - h / 2, width: w, height: h, padding: n.padding || 24 });
-      } else {
-        positions.set(n.id, { x: cx - n.width / 2, y: cy - n.height / 2, width: n.width, height: n.height });
-      }
+      const r = rects.get(n.id);
+      if (n.hasChildren) containers.set(n.id, { ...r, padding: n.padding || 24 });
+      else positions.set(n.id, { x: r.x, y: r.y, width: r.width, height: r.height });
     }
-    for (let pass = 0; pass < 3; pass++) {
-      for (const c of containersWithChildren) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, hits = 0;
-        for (const child of ir.nodes) {
-          if (child.parent !== c.id) continue;
-          const r = positions.get(child.id) || containers.get(child.id);
-          if (!r) continue;
-          hits++;
-          if (r.x < minX) minX = r.x;
-          if (r.y < minY) minY = r.y;
-          if (r.x + r.width > maxX) maxX = r.x + r.width;
-          if (r.y + r.height > maxY) maxY = r.y + r.height;
-        }
-        if (!hits) continue;
-        const pad = c.padding || 24;
-        containers.set(c.id, {
-          x: minX - pad, y: minY - pad - HEADER,
-          width: (maxX - minX) + pad * 2, height: (maxY - minY) + pad * 2 + HEADER,
-          padding: pad,
-        });
-      }
+    for (const c of containerSet.conts) {
+      const r = rects.get(c.id);
+      if (r) containers.set(c.id, { ...r });
     }
     lastContainers = containers;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

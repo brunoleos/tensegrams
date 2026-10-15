@@ -26,3 +26,19 @@ Um par container×peer ou folha×folha só colide se não for coberto pelas unid
 - Gating direto por layer: diverge, sem 'end' em 1.500 ticks e com bbox até 9.001 M px².
 - Gating só entre irmãos: quebra com layers desalinhadas.
 - Containers fora da colisão: é o colapso atual.
+
+## Evidência da implementação (R10, 2026-10-15)
+
+Implementado no v2 em `src/layout/container-bodies.js` (geometria bottom-up única, colisão composta, atrator-região, cobertura). Bancada (ex: + syn:30 + syn:100 × 3 seeds + sondas allcollide e misaligned), violações de colisão antes → depois:
+
+| cena | v2 | v2 + mola | v1 (referência) |
+|---|---|---|---|
+| syn:100 | 120 → 0 | 117 → 0 | 2,3 |
+| syn:30 | 20 → 0 | 20 → 0 | 1,3 |
+| allcollide | 289 → 0 | 281 → 0 | 2 |
+| misaligned | 0 → 0 | 0 → 0 | 0 |
+
+Densidade no syn:100 do v2: 1,53 (empilhado) → 0,11 (v1: 0,10); cruzamentos 697 contra 738 do v1. Todas as execuções emitem 'end'.
+
+Um ponto que a proposta não previa: a força EXTERNA a um container precisa agir no grupo inteiro também na mola de conectividade. Com a mola puxando só o membro ligado, ele saía do grupo esticando o rect, que empurrava os vizinhos, sem fim (bbox ~100× no syn:100). Distribuir a força ao "membro de suporte" da face (o gradiente exato) foi medido e descartado: empilha o layout numa coluna. Um atrator-região sem alpha segura a mola mas comprime os grupos (7 violações no syn:100, 28 no misaligned); com piso de alpha, o meio-termo não estabiliza a mola.
+

@@ -3,7 +3,10 @@
 // (`rest`). É a força que dá comportamento force-directed clássico (nós
 // conectados se atraem) — DESLIGADA por default (campo opt-in).
 //
-// `edges`: array de { a, b, rest? } (slots de corpo). `k` = rigidez.
+// `edges`: array de { a, b, rest?, ga?, gb? } (slots de corpo). `k` = rigidez.
+// O comprimento é medido entre a e b; `ga`/`gb` (opcionais) são os slots que
+// RECEBEM a força de cada ponta, dividida igualmente (corpo composto: a força
+// age no grupo inteiro, não só no membro ligado).
 // Força igual e oposta; o integrador divide por massa (pinado não cede).
 // Escala por `alpha` para acompanhar o resfriamento global.
 
@@ -26,9 +29,16 @@ export function createConnectivitySpring(opts = {}) {
         const rest = e.rest ?? restDefault;
         const f = k * (d - rest) * alpha;   // >0 = esticada → puxa juntos
         const ux = dx / d, uy = dy / d;
-        data[oa + FX] += ux * f; data[oa + FY] += uy * f;
-        data[ob + FX] -= ux * f; data[ob + FY] -= uy * f;
+        if (e.ga) spread(data, e.ga, ux * f, uy * f);
+        else { data[oa + FX] += ux * f; data[oa + FY] += uy * f; }
+        if (e.gb) spread(data, e.gb, -ux * f, -uy * f);
+        else { data[ob + FX] -= ux * f; data[ob + FY] -= uy * f; }
       }
     },
   };
+}
+
+function spread(data, slots, fx, fy) {
+  const k = 1 / slots.length;
+  for (const s of slots) { const o = s * STRIDE; data[o + FX] += fx * k; data[o + FY] += fy * k; }
 }

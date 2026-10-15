@@ -86,6 +86,27 @@ export function deepChainYaml(depth = 6, { childFirst = false } = {}) {
   return `options:\n  title: deep-${depth}\n\n${conns.join('\n')}\n\n${blocks.join('\n')}\n`;
 }
 
+// Todo nó também na layer global 'all'.
+export function allCollideYaml(yaml) {
+  return yaml.replace(/nodeLayers: \[([^\]]*)\]/g, (_, l) => `nodeLayers: [${l ? l + ', ' : ''}all]`);
+}
+
+// Containers perdem suas layers; folhas passam a ter só 'all'.
+export function misalignedYaml(yaml) {
+  const parents = new Set([...yaml.matchAll(/parent: ([\w-]+)/g)].map((m) => m[1]));
+  let cur = null;
+  const out = [];
+  for (const line of yaml.split('\n')) {
+    const m = line.match(/^([\w-]+):/);
+    if (m) cur = m[1];
+    if (cur && line.includes('nodeLayers: [')) {
+      if (parents.has(cur)) continue;
+      out.push(line.replace(/nodeLayers: \[[^\]]*\]/, 'nodeLayers: [all]'));
+    } else out.push(line);
+  }
+  return out.join('\n');
+}
+
 // seeds: null = uma seed fixa por tamanho (30/100/300, comparável com as
 // medições da avaliação de 2026-09-30); lista = cada sintético em cada seed,
 // nomeado `syn:N@sK`.
@@ -96,6 +117,10 @@ export function builtinScenarios({ include = null, seeds = null } = {}) {
     if (!seeds) out.push({ name: `syn:${N}`, yaml: synthYaml(N, { seed: N }) });
     else for (const k of seeds) out.push({ name: `syn:${N}@s${k}`, yaml: synthYaml(N, { seed: k }) });
   }
+  // Layers fora do alinhamento com a hierarquia (gates do R10): todo nó também
+  // na layer global 'all'; e containers sem layer com todas as folhas em 'all'.
+  out.push({ name: 'probe:allcollide', yaml: allCollideYaml(synthYaml(60, { seed: 5 })) });
+  out.push({ name: 'probe:misaligned', yaml: misalignedYaml(synthYaml(60, { seed: 5 })) });
   out.push({ name: 'probe:deep6', yaml: deepChainYaml(6) });
   out.push({ name: 'probe:deep6-childfirst', yaml: deepChainYaml(6, { childFirst: true }) });
   for (const s of out) s.ir = irFromYaml(s.yaml);

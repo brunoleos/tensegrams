@@ -16,6 +16,7 @@ schema_version: 1
 ## Mudado
 
 - Motor v2 (R04/M0): 'end' por repouso cinético (alpha só teto) com KE e maxSpeed na sessão; warm start honra seedPositions/seedAlpha (nó novo em lugar livre junto aos vizinhos); semente de cold start em BFS, independente da ordem do YAML; damping como taxa por tick (deslize igual com 1–8 sub-passos); velocityCap 32 (8 com mola); contato P puro com Kp 0,9 e 2 sub-passos (Ki 0, medido na bancada); colisão descarta estado de slot removido. v1 ganha warmKick 0,05 separado do alphaKick (ADR-0011, ADR-0012)
+- Motor v2 (R10/M2): container com filhos vira corpo composto. Rect derivado bottom-up numa função só (colisão e sessão usam a mesma geometria), colisão container×peer com força dividida entre os descendentes, atrator-região por container e gating por cobertura das unidades sob o LCA (proposta 0022). A mola de conectividade age no grupo quando a ponta está dentro de um container que não contém a outra. Violações no syn:100: 120 → 0 (sem mola) e 117 → 0 (com mola); sondas allcollide e misaligned na bancada (ADR-0010)
 
 ## Adicionado
 

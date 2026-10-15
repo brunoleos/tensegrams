@@ -39,6 +39,10 @@ node bench/layout/run.mjs --external bench/layout/example-external.mjs --only-ex
 Flags:
 
 - `--scenarios`: nomes ou prefixos separados por vírgula (`ex:`, `syn:30`, `probe:`).
+  Sondas: `probe:allcollide` (todo nó também na layer global `all`),
+  `probe:misaligned` (containers sem layer, folhas só em `all`) — layers fora do
+  alinhamento com a hierarquia, os casos difíceis do gating de containers —,
+  `probe:deep6` e `probe:deep6-childfirst` (cadeia de 6 níveis).
 - `--variants`: nomes das variantes.
 - `--seeds 1,2,3`: gera cada sintético em cada seed (`syn:N@sK`). Sem a flag, usa
   uma seed fixa por tamanho, comparável com as medições da avaliação.
