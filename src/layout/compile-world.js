@@ -9,8 +9,9 @@
 //   - corpos = leaves + containers vazios. Container com filhos é CORPO
 //     COMPOSTO (src/layout/container-bodies.js): rect derivado dos
 //     descendentes, colide com peers e hospeda um atrator-região (ADR-0010).
-//   - massa: peso de colisão vira massa (#1). invMass = pinado ? 0 :
-//     max(EPS, 1 - maxWeight). DSL-pin = massa infinita.
+//   - pesos de nodeLayers (ADR-0021): split POR PAR na colisão, pelas layers
+//     compartilhadas (splitFor, a mesma regra do v1); não viram massa. Massa
+//     = 1, ou infinita (invMass 0) para pin da DSL e nó arrastado.
 //   - layers de colisão = chaves de `nodeCollision`. Exclusão ancestral
 //     (nó × container ancestral) via `pairFilter` (a física é agnóstica).
 //   - forças: atrator central (default) + tag attract/repel (viewLayers) +
@@ -22,6 +23,7 @@
 // byte-a-byte.
 
 import { buildAncestors } from '../dsl/ancestry.js';
+import { splitFor } from './collision.js';
 import {
   createHierarchy, createCoverage, createContainerSet, computeRects,
   createCompositeCollision, createRegionAttractor, HEADER,
@@ -35,8 +37,6 @@ import { createTagForces } from '../physics/contributors/tag-forces.js';
 import { createConnectivitySpring } from '../physics/contributors/connectivity-spring.js';
 import { createCollision } from '../physics/collision.js';
 import { createConstraint } from '../physics/constraints/index.js';
-
-const MASS_EPS = 0.05; // massa mínima: peso 1 fica pesado, não imóvel (D-massa)
 
 const DEFAULTS = {
   engine: 'v1',
@@ -117,12 +117,6 @@ function circleSeeds(ids, neighbors) {
     out.set(id, [Math.cos(a) * r, Math.sin(a) * r]);
   });
   return out;
-}
-
-function maxWeight(map) {
-  let m = 0;
-  if (map) for (const w of map.values()) if (w > m) m = w;
-  return m;
 }
 
 export function startLayoutV2(ir, opts = {}) {
@@ -210,7 +204,7 @@ export function startLayoutV2(ir, opts = {}) {
   bodyNodes.forEach((n) => {
     const [w, h] = sizeOf(n);
     const [cx, cy] = center.get(n.id);
-    const invMass = n.pinned ? 0 : Math.max(MASS_EPS, 1 - maxWeight(n.nodeCollision));
+    const invMass = n.pinned ? 0 : 1;
     const slot = addBody(world, {
       x: cx, y: cy, invMass,
       halfW: w / 2, halfH: h / 2,
@@ -241,6 +235,36 @@ export function startLayoutV2(ir, opts = {}) {
     return true;
   }
 
+  // Split por par dos pesos de nodeLayers (ADR-0021), memoizado por par de ids
+  // (pesos são estáticos na sessão). Com um lado imóvel (pin ou arrasto),
+  // força igual e oposta: a massa infinita já decide quem cede.
+  const EVEN = [0.5, 0.5];
+  const splitMemo = new Map();
+  const weightSplit = (idA, idB) => {
+    const key = `${idA}\u0000${idB}`;
+    let v = splitMemo.get(key);
+    if (v) return v;
+    const sp = splitFor(byIdSpec(idA), byIdSpec(idB));
+    v = sp ? [sp.a, sp.b] : EVEN;
+    splitMemo.set(key, v);
+    return v;
+  };
+  function byIdSpec(id) { return H.byId.get(id)?.nodeCollision || null; }
+  function pairSplit(a, b) {
+    const d = world.data;
+    if (d[a * STRIDE + INV_MASS] === 0 || d[b * STRIDE + INV_MASS] === 0) return EVEN;
+    return weightSplit(slotToNode.get(a).id, slotToNode.get(b).id);
+  }
+  // Container é imóvel se todos os descendentes são; corpo, pelo próprio slot.
+  function immovable(id) {
+    const d = world.data;
+    const slots = containerSet.descSlots.get(id);
+    if (!slots) return d[idToSlot.get(id) * STRIDE + INV_MASS] === 0;
+    for (const s of slots) if (d[s * STRIDE + INV_MASS] !== 0) return false;
+    return true;
+  }
+  const compositeSplit = (idA, idB) => (immovable(idA) || immovable(idB) ? EVEN : weightSplit(idA, idB));
+
   // tag-forces sobre viewLayers (como no live legado).
   const tagToSlots = new Map();
   for (const n of bodyNodes) {
@@ -259,9 +283,9 @@ export function startLayoutV2(ir, opts = {}) {
   const contributors = [
     createCentral({ k: cfg.center }),
     createTagForces({ entries: tagEntries, tagToSlots, kAttract: cfg.tagAttract, kRepel: cfg.tagRepel }),
-    createCollision({ Kp: cfg.collisionK, Ki: cfg.collisionKi, pad: cfg.collisionPadding, pairFilter }),
+    createCollision({ Kp: cfg.collisionK, Ki: cfg.collisionKi, pad: cfg.collisionPadding, pairFilter, split: pairSplit }),
     createCompositeCollision({
-      set: containerSet, H, idToSlot, layersOf, covered,
+      set: containerSet, H, idToSlot, layersOf, covered, split: compositeSplit,
       Kp: cfg.compositeK ?? cfg.collisionK, pad: cfg.collisionPadding,
     }),
     createRegionAttractor({ set: containerSet, k: cfg.regionK }),

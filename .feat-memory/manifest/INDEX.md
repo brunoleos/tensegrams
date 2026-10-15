@@ -2,11 +2,11 @@
 
 | ID | Nome | Status | Versão | ADRs | Depende |
 |---|---|---|---|---|---|
-| F-0001 | dsl-to-diagram | shipped | — | ADR-0002,ADR-0003,ADR-0004 | — |
+| F-0001 | dsl-to-diagram | shipped | — | ADR-0002,ADR-0003,ADR-0004,ADR-0021 | — |
 | F-0002 | layout-adapters | shipped | — | ADR-0013,ADR-0010 | F-0001 |
 | F-0003 | edge-routers | shipped | — | ADR-0013 | F-0001 |
 | F-0004 | containers-hierarchy | shipped | — | ADR-0002,ADR-0004 | F-0001 |
-| F-0005 | collision-layers | shipped | — | ADR-0011 | F-0001,F-0002 |
+| F-0005 | collision-layers | shipped | — | ADR-0011,ADR-0021 | F-0001,F-0002 |
 | F-0006 | layer-filter | shipped | — | — | F-0001 |
 | F-0007 | selection-gestures | shipped | — | — | F-0004 |
 | F-0008 | viewport-pan-zoom | shipped | — | — | F-0001 |
@@ -22,4 +22,4 @@
 | F-0018 | debug-overlay-export | shipped | — | — | F-0005,F-0008 |
 | F-0019 | mobile-layout | shipped | — | — | F-0008,F-0010 |
 
-_Gerado por `feat-memory audit` em 2026-06-26T18:26:05+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-10-15T19:43:30+00:00. Não edite manualmente._

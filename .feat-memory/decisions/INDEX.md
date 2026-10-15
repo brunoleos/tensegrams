@@ -14,5 +14,6 @@
 | ADR-0011 | 2026-06-10 | accepted | physics,collision | F-0005 |
 | ADR-0012 | 2026-06-10 | accepted | physics,routing,edges | F-0017 |
 | ADR-0013 | 2026-06-18 | accepted | architecture,layout,routing | F-0002,F-0003 |
+| ADR-0021 | 2026-10-15 | accepted | dsl,layers,physics | F-0005,F-0001 |
 
-_Gerado por `feat-memory audit` em 2026-06-26T18:26:05+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-10-15T19:43:30+00:00. Não edite manualmente._

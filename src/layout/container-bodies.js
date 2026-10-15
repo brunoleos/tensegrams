@@ -33,6 +33,7 @@ import { layersIntersect } from '../physics/collision.js';
 
 export const HEADER = 22;
 export const DEFAULT_PADDING = 24;
+const HALF = [0.5, 0.5];
 
 // Hierarquia restrita aos nós da IR: parentOf, cadeia até a raiz e as
 // "unidades sob o LCA" de um par.
@@ -133,8 +134,10 @@ export function computeRects(world, set, idToSlot, out = new Map()) {
 }
 
 // Colisão composta: container × peer. `covered(a, b)` aplica a regra de
-// cobertura; `layersOf(id)` devolve o Set de layers do nó (ou null).
-export function createCompositeCollision({ set, H, idToSlot, layersOf, covered, Kp = 0.9, pad = 0 }) {
+// cobertura; `layersOf(id)` devolve o Set de layers do nó (ou null);
+// `split(idA, idB)` (opcional) devolve [fa, fb], a divisão dos pesos de
+// nodeLayers (ADR-0021): cada lado recebe 2·f·fração.
+export function createCompositeCollision({ set, H, idToSlot, layersOf, covered, split = null, Kp = 0.9, pad = 0 }) {
   const rects = new Map();
   const peers = [...set.conts.map((c) => c.id), ...idToSlot.keys()];
   const isCont = new Set(set.conts.map((c) => c.id));
@@ -175,12 +178,13 @@ export function createCompositeCollision({ set, H, idToSlot, layersOf, covered, 
           if (ox <= 0 || oy <= 0) continue;
           const dx = (rb.x + rb.width / 2) - (ra.x + ra.width / 2);
           const dy = (rb.y + rb.height / 2) - (ra.y + ra.height / 2);
+          const [sa, sb] = split ? split(a, b) : HALF;
           if (ox < oy) {
-            const f = Kp * ox * (dx >= 0 ? 1 : -1);
-            push(d, a, -f, 0); push(d, b, f, 0);
+            const f = 2 * Kp * ox * (dx >= 0 ? 1 : -1);
+            push(d, a, -f * sa, 0); push(d, b, f * sb, 0);
           } else {
-            const f = Kp * oy * (dy >= 0 ? 1 : -1);
-            push(d, a, 0, -f); push(d, b, 0, f);
+            const f = 2 * Kp * oy * (dy >= 0 ? 1 : -1);
+            push(d, a, 0, -f * sa); push(d, b, 0, f * sb);
           }
         }
       }

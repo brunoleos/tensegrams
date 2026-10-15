@@ -33,6 +33,15 @@ describe('parseWeightedMap (YAML list or map form)', () => {
     assert.equal(m.get('A'), 1);
   });
 
+  test('peso fora de [0, 1] gera aviso (ADR-0021); dentro, não', () => {
+    const warns = { warnings: [] };
+    parseWeightedMap({ A: 2, B: -1, C: 0.5 }, 3, warns, 'n', 'nodeLayers');
+    parseWeightedMap([{ D: 1.5 }, 'E', 'F:3'], 4, warns, 'n', 'nodeLayers');
+    const range = warns.warnings.filter((w) => /fora de \[0, 1\]/.test(w.msg));
+    assert.deepEqual(range.map((w) => w.msg.match(/"(\w)"/)[1]), ['A', 'B', 'D', 'F']);
+    assert.ok(range.every((w) => w.line === 3 || w.line === 4));
+  });
+
   test('weight < 0 clamped to 0', () => {
     const m = parseWeightedMap({ A: -0.5 }, 0, ir, 'n', 'nodeLayers');
     assert.equal(m.get('A'), 0);

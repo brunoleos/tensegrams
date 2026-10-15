@@ -321,12 +321,15 @@ cache:  { nodeLayers: [services] }            # cede totalmente (peso 0)
 
 **Quando dois elementos colidem.** Dois elementos colidem quando seus conjuntos de tags têm interseção não-vazia. Sem tag em comum → sem colisão.
 
-**Pesos.** `peso 0` = totalmente *driven* (absorve todo o movimento); `peso 1` = resistência máxima. Para um par (X, Y), a fração do deslocamento que cada lado absorve é a razão dos pesos do oponente:
+**Pesos.** `peso 0` = totalmente *driven*; `peso 1` = resistência máxima. O que decide quem cede é a **diferença** de pesos do par, calculada só sobre as layers que os dois compartilham (com várias, a média de cada lado):
 
 ```
-fracX = pesoY / (pesoX + pesoY)
-fracY = pesoX / (pesoX + pesoY)        (ambos 0 → 0.5 / 0.5)
+diff  = pesoX - pesoY
+fracX = 0.5 - diff/2        # fração da separação que X absorve
+fracY = 0.5 + diff/2
 ```
+
+Pesos iguais → 50/50, seja 0 ou 1; `(1, 0)` → o lado de peso 0 absorve tudo; `(0.75, 0.25)` → 25% / 75%. Um peso numa layer que o outro lado não tem não conta. Pesos fora de [0, 1] são grampeados, com aviso. A regra é a mesma nos motores `v1` e `v2` (ADR-0021); o peso não vira massa, então não muda a resposta do nó a outras forças nem ao arrasto.
 
 Os knobs globais de folga ficam no config:
 

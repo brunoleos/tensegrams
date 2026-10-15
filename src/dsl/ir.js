@@ -592,6 +592,14 @@ function parseLayerList(v, line, ir, owner) {
 export function parseWeightedMap(v, line, ir, owner, attrName) {
   const out = new Map();
   if (v == null) return out;
+  // Peso fora de [0,1] é grampeado, com aviso (ADR-0021).
+  const add = (tag, w) => {
+    const num = addWeight(out, tag, w);
+    if (num !== null && (num < 0 || num > 1) && ir) ir.warnings.push({
+      line,
+      msg: `${attrName} em ${owner}: peso ${num} de "${tag}" fora de [0, 1]; usado ${out.get(tag)}`,
+    });
+  };
   if (Array.isArray(v)) {
     for (const entry of v) {
       if (typeof entry === 'string' && entry) {
@@ -601,7 +609,7 @@ export function parseWeightedMap(v, line, ir, owner, attrName) {
         // so the author learns to add the space (or use `{tag: weight}`).
         const m = /^([^:\s]+):(-?\d+(?:\.\d+)?)$/.exec(entry);
         if (m) {
-          addWeight(out, m[1], m[2]);
+          add(m[1], m[2]);
           if (ir) ir.warnings.push({
             line,
             msg: `${attrName} em ${owner}: "${entry}" virou string única; escreva "${m[1]}: ${m[2]}" (com espaço) ou {${m[1]}: ${m[2]}}`,
@@ -610,7 +618,7 @@ export function parseWeightedMap(v, line, ir, owner, attrName) {
           out.set(entry, 0);
         }
       } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-        for (const [tag, w] of Object.entries(entry)) addWeight(out, tag, w);
+        for (const [tag, w] of Object.entries(entry)) add(tag, w);
       } else if (entry != null && ir) {
         ir.warnings.push({
           line,
@@ -621,18 +629,20 @@ export function parseWeightedMap(v, line, ir, owner, attrName) {
     return out;
   }
   if (typeof v === 'object') {
-    for (const [tag, w] of Object.entries(v)) addWeight(out, tag, w);
+    for (const [tag, w] of Object.entries(v)) add(tag, w);
     return out;
   }
   if (ir) ir.warnings.push({ line, msg: `${attrName} em ${owner} deve ser lista ou mapa de tags` });
   return out;
 }
 
+// Grava o peso grampeado em [0,1]; devolve o número lido (null se inválido).
 function addWeight(out, tag, w) {
-  if (!tag) return;
+  if (!tag) return null;
   const num = Number(w);
-  if (!Number.isFinite(num)) return;
+  if (!Number.isFinite(num)) return null;
   out.set(tag, Math.min(1, Math.max(0, num)));
+  return num;
 }
 
 function parseConstraint(v, line, ir, owner) {

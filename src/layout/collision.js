@@ -67,6 +67,13 @@ export function computeSplit(specA, specB, shared) {
   return { a: 0.5 - diff / 2, b: 0.5 + diff / 2 };
 }
 
+// Split of a pair straight from the two weight maps: {a, b}, or null when
+// they share no label (no collision). Same rule in v1 and v2 (ADR-0021).
+export function splitFor(specA, specB) {
+  const shared = sharedLabels(specA, specB);
+  return shared.length ? computeSplit(specA, specB, shared) : null;
+}
+
 // Labels present in BOTH specs (iterating the smaller one).
 function sharedLabels(specA, specB) {
   if (!specA || !specB || specA.size === 0 || specB.size === 0) return [];

@@ -14,6 +14,7 @@ contracts:
     obstacle_route: src/routing/obstacle-route.js
   tests:
     - tests/dsl/collision-attrs.test.js
+    - tests/layout/weights-parity.test.js
     - tests/layout/collision.test.js
     - tests/layout/collision-postpass.test.js
     - tests/routing/obstacle-route.test.js
@@ -29,8 +30,9 @@ acceptance:
     pattern: state
     state: "dois nós compartilham um collision layer"
     response: >
-      o pós-passo os separa até não haver sobreposição, absorvendo o
-      deslocamento na razão dos pesos do oponente
+      o motor os separa até não haver sobreposição; cada lado absorve
+      0,5 − (seu peso − peso do outro)/2 da separação, com os pesos médios
+      das layers compartilhadas, igual no v1 e no v2
   - id: A3
     pattern: optional
     feature: "uma aresta tem `nodeLayers`"
@@ -42,7 +44,7 @@ acceptance:
     trigger: "dois elementos se sobrepõem mas não compartilham nenhum layer"
     response: "a sobreposição é tolerada sem erro (não há colisão declarada)"
 depends_on: [F-0001, F-0002]
-decisions: [ADR-0011]
+decisions: [ADR-0011, ADR-0021]
 ---
 
 # F-0005 · Collision layers
@@ -56,9 +58,11 @@ Colisão é declarada inline na DSL, por nó/aresta:
 - `nodeLayers` em **aresta** — a aresta desvia de nós no(s) grupo(s).
 - `edgeLayers` em **aresta** — outras arestas das quais esta desvia (bundling).
 
-Forma lista (peso 0, "yielding") ou mapa (peso explícito em [0,1]). Para um par
-(X,Y), a fração que cada lado absorve é a razão dos pesos do oponente
-(`fracX = pesoY/(pesoX+pesoY)`). Separação em
+Forma lista (peso 0, "yielding") ou mapa (peso explícito em [0,1]; fora da
+faixa é grampeado, com aviso). Para um par (X,Y), a divisão segue a diferença
+de pesos nas layers compartilhadas: `fracX = 0,5 − (pesoX − pesoY)/2` — pesos
+iguais → 50/50, (1, 0) → o lado de peso 0 absorve tudo. A mesma regra vale no
+v1 e no v2, por par e não como massa (ADR-0021). Separação em
 [src/layout/collision.js](src/layout/collision.js) +
 [src/layout/collision-postpass.js](src/layout/collision-postpass.js).
 

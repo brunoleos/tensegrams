@@ -13,6 +13,12 @@
 // - Anti-windup: o acumulador é limitado a [0, accMax] e descartado quando o
 //   par separa ou sai da candidatura.
 //
+// Split por par (ADR-0021, opcional): `split(a, b)` devolve [fa, fb] com
+// fa + fb = 1, a fração da separação que cada corpo absorve (os pesos de
+// nodeLayers, calculados pelo compilador). O corpo a recebe 2·fa·f e o b
+// 2·fb·f: a taxa de separação do par é a mesma do 50/50, só a divisão muda.
+// Sem `split`, força igual e oposta (0,5/0,5) e a massa decide a cedência.
+//
 // Gate por camada: dois corpos só colidem se seus conjuntos de layers se
 // intersectam. Exclusões de domínio (nó × seu container ancestral, aresta ×
 // seus endpoints) são injetadas pelo compilador via `pairFilter` — a física
@@ -37,6 +43,7 @@ export function createCollision(opts = {}) {
   const pad = opts.pad ?? 0;
   const accMax = opts.accMax ?? 200;
   const pairFilter = opts.pairFilter ?? null;
+  const split = opts.split ?? null;
 
   const acc = new Map(); // pairKey -> { v: Float64, s: stepStamp }
   let step = 0;
@@ -89,14 +96,16 @@ export function createCollision(opts = {}) {
       else if (e.v < 0) e.v = 0;
 
       const f = Kp * pen + Ki * e.v;
+      let fa = f, fb = f;
+      if (split) { const sp = split(a, b); fa = 2 * f * sp[0]; fb = 2 * f * sp[1]; }
       if (axisX) {
         const dir = dx >= 0 ? 1 : -1;          // direção a→b
-        data[oa + FX] -= f * dir;
-        data[ob + FX] += f * dir;
+        data[oa + FX] -= fa * dir;
+        data[ob + FX] += fb * dir;
       } else {
         const dir = dy >= 0 ? 1 : -1;
-        data[oa + FY] -= f * dir;
-        data[ob + FY] += f * dir;
+        data[oa + FY] -= fa * dir;
+        data[ob + FY] += fb * dir;
       }
     });
 

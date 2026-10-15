@@ -44,7 +44,7 @@ acceptance:
     response: >
       o erro aparece na barra de erros sem quebrar a cena já renderizada
 depends_on: []
-decisions: [ADR-0002, ADR-0003, ADR-0004]
+decisions: [ADR-0002, ADR-0003, ADR-0004, ADR-0021]
 ---
 
 # F-0001 · DSL→diagrama
