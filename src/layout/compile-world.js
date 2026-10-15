@@ -232,16 +232,26 @@ export function startLayoutV2(ir, opts = {}) {
 
   function emit(ev) { for (const cb of listeners[ev]) cb(session); }
 
+  // O solver prende alpha EXATAMENTE em alphaMin (solver.js: max(alphaMin, …)),
+  // então "assentou" é alpha <= alphaMin. Com `<` estrito o 'end' nunca saía e o
+  // rAF rodava para sempre com corpos livres. Isto marca o fim do cronograma de
+  // alpha, não repouso cinético (esse critério é outro passo).
+  const settled = (a) => a <= cfg.alphaMin;
+
   function stepOnce() {
     if (stopped) return;
     const alpha = solver.tick(world);
     commit();
     emit('tick');
-    if (alpha < cfg.alphaMin && !endEmitted) { endEmitted = true; emit('end'); cancelLoop(); }
-    else if (alpha >= cfg.alphaMin) endEmitted = false;
+    if (settled(alpha)) {
+      if (!endEmitted) { endEmitted = true; emit('end'); }
+      cancelLoop();
+    } else {
+      endEmitted = false;
+    }
   }
 
-  function loop() { rafHandle = null; if (stopped) return; stepOnce(); if (solver.alpha >= cfg.alphaMin) ensureRunning(); }
+  function loop() { rafHandle = null; if (stopped) return; stepOnce(); if (!settled(solver.alpha)) ensureRunning(); }
   function ensureRunning() {
     if (stopped || rafHandle != null) return;
     if (typeof requestAnimationFrame !== 'undefined') rafHandle = requestAnimationFrame(loop);
@@ -306,7 +316,7 @@ export function startLayoutV2(ir, opts = {}) {
 
   commit(); // commit inicial para subscribers verem algo
 
-  if (solver.alpha < cfg.alphaMin) {
+  if (settled(solver.alpha)) {
     queueMicrotask(() => { if (stopped) return; emit('tick'); endEmitted = true; emit('end'); });
   } else if (typeof requestAnimationFrame !== 'undefined') {
     ensureRunning();

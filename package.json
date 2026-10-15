@@ -13,7 +13,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "debug:svg": "node e2e/debug-snapshot.js",
-    "debug:assert": "node e2e/debug-snapshot.js --example=containers --layout=live --router=orthogonal --assert"
+    "debug:assert": "node e2e/debug-snapshot.js --example=containers --layout=live --router=orthogonal --assert",
+    "bench:layout": "node bench/layout/run.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

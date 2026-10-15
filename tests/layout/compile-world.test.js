@@ -6,9 +6,14 @@ import { startLayoutV2 } from '../../src/layout/compile-world.js';
 
 const ir = (src) => buildIR(parse(src));
 
+// Roda até o 'end' do PRÓPRIO produto — não um limiar local de alpha, que
+// escondia o bug do 'end' que nunca saía com corpos livres (R03).
 function runUntilSettled(session, maxTicks = 1000) {
+  let ended = false;
+  const off = session.on('end', () => { ended = true; });
   let t = 0;
-  while (session.alpha >= 0.005 && t < maxTicks) { session.tick(); t++; }
+  while (!ended && t < maxTicks) { session.tick(); t++; }
+  off();
   return t;
 }
 
@@ -93,6 +98,92 @@ b: { pin: [80, 0], size: [20, 20] }
     // tudo pinado → alpha inicial 0 → end assíncrono
     const ended = await new Promise((r) => { s.on('end', () => r(true)); setTimeout(() => r(false), 50); });
     assert.ok(ended, 'end emitido para cena totalmente pinada');
+  });
+});
+
+// rAF falso: fila de callbacks drenada frame a frame pelo teste.
+function installFakeRaf() {
+  const prev = { raf: globalThis.requestAnimationFrame, caf: globalThis.cancelAnimationFrame };
+  const queue = new Map();
+  let next = 1;
+  globalThis.requestAnimationFrame = (cb) => { const h = next++; queue.set(h, cb); return h; };
+  globalThis.cancelAnimationFrame = (h) => { queue.delete(h); };
+  return {
+    pending: () => queue.size,
+    // roda um frame; devolve false quando não há nada agendado
+    frame() {
+      if (!queue.size) return false;
+      const cbs = [...queue.values()];
+      queue.clear();
+      for (const cb of cbs) cb();
+      return true;
+    },
+    restore() {
+      globalThis.requestAnimationFrame = prev.raf;
+      globalThis.cancelAnimationFrame = prev.caf;
+    },
+  };
+}
+
+describe('layout/compile-world — término do loop (R03)', () => {
+  const FREE = `
+connections:
+  - [a, b]
+  - [b, c]
+a: { nodeLayers: [g], size: [40, 30] }
+b: { nodeLayers: [g], size: [40, 30] }
+c: { nodeLayers: [g], size: [40, 30] }
+`;
+  // alpha decai geometricamente até o piso alphaMin (src/physics/solver.js):
+  // o número de ticks até o piso é ln(alphaMin) / ln(1 − alphaDecay).
+  const scheduleTicks = (alphaMin, alphaDecay) => Math.ceil(Math.log(alphaMin) / Math.log(1 - alphaDecay));
+
+  test('com corpos livres, emite end e para de agendar frames', () => {
+    const raf = installFakeRaf();
+    try {
+      const s = startLayoutV2(ir(FREE), { live: { engine: 'v2' } });
+      let ticks = 0, ends = 0;
+      s.on('tick', () => { ticks++; });
+      s.on('end', () => { ends++; });
+      let frames = 0;
+      while (raf.frame() && frames < 5000) frames++;
+      assert.equal(ends, 1, 'end emitido exatamente uma vez');
+      assert.equal(raf.pending(), 0, 'nenhum frame agendado depois do end');
+      // O end de hoje marca o fim do cronograma de alpha, não repouso cinético
+      // (critério cinético é o R04/M0). Ele não pode passar do cronograma.
+      assert.ok(ticks <= scheduleTicks(0.003, 0.012) + 1, `end no cronograma (ticks=${ticks})`);
+      s.stop();
+    } finally { raf.restore(); }
+  });
+
+  test('reaquecer com drag/release religa o loop e termina de novo', () => {
+    const raf = installFakeRaf();
+    try {
+      const s = startLayoutV2(ir(FREE), { live: { engine: 'v2' } });
+      let ends = 0;
+      s.on('end', () => { ends++; });
+      let frames = 0;
+      while (raf.frame() && frames < 5000) frames++;
+      assert.equal(ends, 1);
+      const a = s.positions.get('a');
+      s.update({ drag: { id: 'a', x: a.x + 50, y: a.y } });
+      assert.ok(raf.pending() > 0, 'drag reagenda o loop');
+      s.update({ release: 'a' });
+      frames = 0;
+      while (raf.frame() && frames < 5000) frames++;
+      assert.equal(ends, 2, 'segundo end depois do reaquecimento');
+      assert.equal(raf.pending(), 0, 'loop parado de novo');
+      s.stop();
+    } finally { raf.restore(); }
+  });
+
+  test('tick() manual também emite end com corpos livres', () => {
+    const s = startLayoutV2(ir(FREE), { live: { engine: 'v2' } });
+    let ended = false;
+    s.on('end', () => { ended = true; });
+    let t = 0;
+    while (!ended && t < 2000) { s.tick(); t++; }
+    assert.ok(ended, `end emitido (ticks=${t})`);
   });
 });
 

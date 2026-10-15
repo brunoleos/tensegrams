@@ -250,6 +250,7 @@ O renderer faz **culling por viewport** (só desenha elementos dentro do retâng
 ├── tests/                   # node --test (Node 22+) — espelha a árvore de src/
 ├── e2e/                     # Playwright (19 specs): bootstrap, temas, layouts×routers, import/export, …
 ├── e2e-prod/                # smoke visual contra o deploy publicado
+├── bench/layout/            # bancada headless de layout (métricas, seeds, layouts externos)
 └── dist/                    # (gitignored) saída de `npm run build` — é o que vai pro Pages
 ```
 
@@ -276,6 +277,12 @@ Dois projetos: `chromium` (1280×800) e `mobile-chromium` (Pixel 7). Cobre boots
 
 ```bash
 npx playwright test --config=playwright.config.prod.js
+```
+
+**Bancada de layout (`bench/layout`):** roda os layouts do app e layouts externos sobre os mesmos cenários e mede colisão, contenção, cruzamentos, determinismo, assentamento e estabilidade do mapa mental. Não é gate de CI; um teste de fumaça em `tests/bench` garante que ela segue rodando. Detalhes em [bench/layout/README.md](bench/layout/README.md).
+
+```bash
+npm run bench:layout -- --scenarios ex:,syn:30 --variants live-v1,live-v2 --seeds 1,2,3
 ```
 
 ## Config
